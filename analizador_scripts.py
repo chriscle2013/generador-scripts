@@ -1,47 +1,70 @@
-# analizador_scripts.py
+import google.generativeai as genai
+import os
+import streamlit as st
 
-import streamlit as st # Asegúrate de que streamlit esté importado si lo usas aquí
+# La configuración de la API y la inicialización del modelo son cruciales aquí también.
+# Asegúrate de que GOOGLE_API_KEY esté disponible en Streamlit Cloud Secrets.
+
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+
+if GOOGLE_API_KEY:
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+    except Exception as e:
+        st.error(f"Error al configurar la API de Gemini en analizador_scripts: {e}")
+        genai = None
+else:
+    st.error("Error: GOOGLE_API_KEY no encontrada en los secretos de Streamlit para el analizador. Por favor, configúrala.")
+    genai = None
+
+model = None
+if genai:
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+    except Exception as e:
+        st.error(f"Error al inicializar el modelo Gemini 'gemini-1.5-flash' en analizador_scripts: {e}")
+        model = None
 
 def analizar_script(script_texto):
     """
-    Realiza un análisis básico de un script.
-    En una versión más avanzada, esto podría usar IA para dar feedback.
+    Realiza un análisis avanzado de un script usando Google Gemini, evaluando tono, hook, CTA, etc.
     """
     if not script_texto.strip():
-        return "El script está vacío. No hay nada que analizar."
+        return "El script está vacío. No hay nada que analizar con la IA."
 
-    lineas = [linea.strip() for linea in script_texto.split('\n') if linea.strip()]
-    num_lineas = len(lineas)
-    
-    analisis = []
+    if model is None:
+        st.error("No se puede analizar el script: Modelo de IA no inicializado. Revisa tu clave API y logs.")
+        return "Error: Modelo de IA para análisis no inicializado."
 
-    analisis.append(f"✅ **Análisis Rápido del Script**:")
-    analisis.append(f"- El script tiene **{num_lineas}** líneas de contenido.")
+    prompt = f"""
+    Eres un experto analista de contenido para reels de redes sociales (TikTok, Instagram, YouTube Shorts).
+    Tu tarea es analizar el siguiente script para un reel y proporcionar un feedback detallado.
+    Evalúa los siguientes puntos y sé constructivo en tus sugerencias:
 
-    # Detectar presencia de palabras clave básicas
-    palabras_clave_hook = ["hook", "gancho", "¿cómo", "¿sabías", "descubre", "aprende", "secreto"]
-    palabras_clave_cta = ["llama ahora", "clic aquí", "visita", "sigue para más", "compra ahora", "regístrate"]
+    --- SCRIPT A ANALIZAR ---
+    {script_texto}
+    --- FIN SCRIPT ---
 
-    tiene_hook = any(any(pk in linea.lower() for pk in palabras_clave_hook) for linea in lineas[:2]) # Busca hook en las primeras 2 líneas
-    tiene_cta = any(any(pk in linea.lower() for pk in palabras_clave_cta) for linea in lineas[-2:]) # Busca CTA en las últimas 2 líneas
+    El análisis debe cubrir:
+    1.  **Tono y Estilo:** ¿Es el tono adecuado para un reel? ¿Es atractivo y mantiene la atención?
+    2.  **Gancho (Hook):** ¿Es efectivo el inicio del script para captar la atención en los primeros segundos? Sugiere mejoras si es necesario.
+    3.  **Desarrollo del Contenido:** ¿Fluye bien el mensaje? ¿Es claro y conciso? ¿Hay una progresión lógica?
+    4.  **Llamada a la Acción (CTA - Call To Action):** ¿Es clara y persuasiva la CTA final? ¿Es fácil de entender para el espectador qué debe hacer?
+    5.  **Longitud y Ritmo:** ¿Es apropiado para un reel corto (30-60 segundos)? ¿Sugiere algún ajuste de ritmo?
+    6.  **Sugerencias Generales:** Cualquier otra recomendación para mejorar el script.
 
-    if tiene_hook:
-        analisis.append("- Parece que tiene un **buen gancho (hook)** al principio. ¡Bien hecho!")
-    else:
-        analisis.append("- ⚠️ **Sugerencia:** Considera añadir un **gancho (hook) fuerte** al inicio para captar la atención.")
-
-    if tiene_cta:
-        analisis.append("- Incluye una **llamada a la acción (CTA)** clara. ¡Excelente para la conversión!")
-    else:
-        analisis.append("- ⚠️ **Sugerencia:** Añade una **llamada a la acción (CTA)** al final para guiar a tu audiencia.")
-
-    if num_lineas < 3:
-        analisis.append("- 💡 **Sugerencia:** El script es muy corto. Considera añadir más detalles o una escena adicional.")
-    elif num_lineas > 7:
-        analisis.append("- 💡 **Sugerencia:** El script es algo largo. Para un reel corto, podrías buscar ser más conciso.")
-    else:
-        analisis.append("- El script tiene una longitud **adecuada** para un reel.")
-
-    analisis.append("\nEsperamos que este análisis te sea útil para mejorar tu contenido.")
-    
-    return "\n".join(analisis)
+    Por favor, presenta tu análisis de manera estructurada con encabezados para cada punto.
+    """
+    st.info("Enviando script a Gemini para análisis...")
+    try:
+        response = model.generate_content(prompt)
+        
+        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+            st.success("¡Análisis de script generado por Gemini!")
+            return "\n".join([part.text for part in response.candidates[0].content.parts])
+        else:
+            st.warning("Gemini no devolvió un análisis válido. Posiblemente un error interno de la API o contenido bloqueado.")
+            return "No se pudo generar el análisis del script. Intenta de nuevo."
+    except Exception as e:
+        st.error(f"Error al conectar con la IA para análisis de script: {e}. Revisa tu clave API y límites de uso.")
+        return f"Error al analizar script: {e}"
