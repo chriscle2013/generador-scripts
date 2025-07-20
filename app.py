@@ -2,11 +2,9 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno (útil para desarrollo local)
 load_dotenv()
 
-# Importar funciones desde tus módulos
-from generadores import generar_script # Nombre de archivo corregido a 'generadores'
+from generadores import generar_script
 from analizador_scripts import analizar_script
 
 st.set_page_config(layout="wide", page_title="Generador de Scripts para Reels 🎬")
@@ -21,13 +19,13 @@ objetivo = st.selectbox("🎯 Objetivo del Reel:",
                         ["Captar la atención y educar", "Entretener y generar interacción", "Vender un producto/servicio", "Generar leads/suscripciones", "Viralizar un concepto"],
                         help="¿Qué quieres lograr con este Reel?")
 estilo = st.selectbox("🎭 Estilo/Tono deseado:",
-                      ["Informativo y directo", "Humorístico y sarcástico", "Inspirador y motivacional", "Dramático y sensacionalista", "Curioso y misterioso"],
+                      ["Informativo y directo", "Humorístico y sarcástico", "Inspirador y motivador", "Dramático y sensacionalista", "Curioso y misterioso"],
                       help="¿Cómo quieres que suene tu Reel?")
 duracion = st.slider("⏱️ Duración aproximada (segundos):", 15, 90, 30, step=5, help="La duración ideal para un Reel.")
 
 if st.button("✨ Generar Script"):
     if tema:
-        with st.spinner("Generando tu script con IA DeepSeek... ¡Esto puede tomar unos segundos! 🤖"): # Mensaje actualizado
+        with st.spinner("Generando tu script con IA Qwen... ¡Esto puede tomar unos segundos! 🤖"): # Mensaje actualizado
             script_generado = generar_script(tema, objetivo, estilo, duracion)
             if script_generado:
                 st.subheader("📝 Script Generado:")
@@ -52,12 +50,10 @@ script_completo_para_analizar = st.text_area("✍️ Pega el script completo aqu
 
 if st.button("🔬 Analizar Script"):
     if script_completo_para_analizar:
-        with st.spinner("Analizando tu script con IA DeepSeek... ¡Casi listo! 🧠"): # Mensaje actualizado
-            # La función analizar_script ahora renderiza directamente en Streamlit
+        with st.spinner("Analizando tu script con IA Qwen... ¡Casi listo! 🧠"): # Mensaje actualizado
             analisis_resultado = analizar_script(script_completo_para_analizar)
-            if analisis_resultado: # Si hay un string de error, lo mostramos
+            if analisis_resultado:
                 st.error(analisis_resultado)
-            # Si la función retorna vacío, significa que ya renderizó el contenido
     else:
         st.warning("Por favor, pega un script o genera uno para analizar.")
 
