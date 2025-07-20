@@ -36,7 +36,7 @@ def analizar_script(script_texto):
         st.error("⚠️ No se puede analizar el script: Modelo de IA no inicializado. Revisa tu clave API y logs.")
         return "Error: Modelo de IA para análisis no inicializado."
 
-    # --- PROMPT (Mantenemos el prompt, ya que el contenido es bueno) ---
+    # --- PROMPT (Lo mantenemos para que Gemini genere el contenido que queremos) ---
     prompt = f"""
     Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
     Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
@@ -49,39 +49,39 @@ def analizar_script(script_texto):
     El análisis debe cubrir y presentar los siguientes puntos. Para los puntos con puntuación, genera un valor del 0 al 100%.
 
     **Formato de Salida ABSOLUTAMENTE OBLIGATORIO para el parsing:**
-    Cada punto debe iniciar con su título numerado y en negritas.
+    Cada punto debe iniciar con su título numerado SIN negritas (ej. "1. Tono y Estilo:").
     Si hay una puntuación, DEBE incluir la frase exacta "Puntuación: [X%]".
     Si hay una sugerencia, DEBE incluir la frase exacta "Sugerencia: [Sugerencia concreta o ejemplo]".
 
-    **1. Tono y Estilo:**
+    1. Tono y Estilo:
     [Descripción del tono]. Puntuación: [X%]
     Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    **2. Gancho (Hook):**
+    2. Gancho (Hook):
     [Efectividad del gancho]. Puntuación: [Y%]
     Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    **3. Desarrollo del Contenido:**
+    3. Desarrollo del Contenido:
     [Claridad y progresión del mensaje]. Puntuación: [Z%]
     Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    **4. Llamada a la Acción (CTA - Call To Action):**
+    4. Llamada a la Acción (CTA - Call To Action):
     [Claridad y persuasión de la CTA]. Puntuación: [W%]
     Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    **5. Originalidad y Creatividad:**
+    5. Originalidad y Creatividad:
     [Nivel de originalidad y frescura]. Puntuación: [A%]
     Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    **6. Claridad y Concisión:**
+    6. Claridad y Concisión:
     [Facilidad de comprensión y brevedad]. Puntuación: [B%]
     Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    **7. Longitud y Ritmo:**
+    7. Longitud y Ritmo:
     [Adecuación para reel (30-60s) y flujo general].
     Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    **8. Resumen General y Conclusión Final:**
+    8. Resumen General y Conclusión Final:
     [Conclusión general y potencial. Mensaje motivador final].
     """
 
@@ -100,21 +100,23 @@ def analizar_script(script_texto):
         # --- Depuración TEMPORAL (Mantener activo por si falla de nuevo) ---
         st.expander("Ver respuesta RAW de Gemini (para depuración)").code(full_analysis_text)
         
-        # --- PARSING MÁS ROBUSTO CON re.finditer ---
+        # --- PARSING MÁS ROBUSTO Y PRESENTACIÓN ---
         st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
         
         # Patrón para identificar los títulos de sección.
-        # Captura el título completo (ej. "1. Tono y Estilo") y también el texto hasta la siguiente sección.
+        # ***MODIFICACIÓN CLAVE AQUÍ: REMOVER LOS ASTERISCOS DEL PATRÓN DE TÍTULO***
+        # Captura el título completo (ej. "1. Tono y Estilo:") y también el texto hasta la siguiente sección.
         # re.DOTALL permite que '.' coincida con saltos de línea
         section_regex = re.compile(
-            r"^\s*\*\*(?P<title>\d+\.\s*[^:]+)\*\*[:\s]*(?P<content>.*?)(?=\s*\*\*(\d+\.\s*)|$)",
+            r"^\s*(?P<title>\d+\.\s*[^:]+):\s*(?P<content>.*?)(?=\s*\d+\.\s*[^:]+:|$)",
             re.MULTILINE | re.DOTALL
         )
         
         parsed_data = {}
+        # Iterar sobre todas las coincidencias encontradas
         for match in section_regex.finditer(full_analysis_text):
-            title = match.group('title').strip()
+            title = match.group('title').strip() # '1. Tono y Estilo'
             content = match.group('content').strip()
             parsed_data[title] = content
 
@@ -132,11 +134,14 @@ def analizar_script(script_texto):
 
         # Iterar a través de los títulos en el orden deseado para la presentación
         for full_title_in_order in ordered_section_titles:
-            content_raw = parsed_data.get(full_title_in_order)
+            # Obtener el contenido de la sección. Si no existe, estará vacío.
+            content_raw = parsed_data.get(full_title_in_order, "")
             
-            if content_raw:
+            if content_raw: # Solo si hay contenido para esta sección
                 # Limpiar el título para la presentación
-                display_title = full_title_in_order.split('.', 1)[1].strip() # Quita el número y el primer punto
+                # display_title = full_title_in_order.split('.', 1)[1].strip() # Esto ya no es necesario
+                # Directamente, el título sin el número
+                display_title = re.sub(r'^\d+\.\s*', '', full_title_in_order).strip()
 
                 score = None
                 description_text = content_raw
@@ -158,7 +163,11 @@ def analizar_script(script_texto):
                     description_text = description_text.split('Sugerencia:')[0].strip()
 
                 # --- PRESENTACIÓN EN STREAMLIT ---
-                if "Puntuación" in full_title_in_order: # Para secciones que deben tener métrica y progreso
+                # Identificamos las secciones que deben mostrar métricas/progreso por su título
+                if display_title in ["Tono y Estilo", "Gancho (Hook)", "Desarrollo del Contenido",
+                                     "Llamada a la Acción (CTA)", "Originalidad y Creatividad",
+                                     "Claridad y Concisión"]:
+                    
                     col1, col2 = st.columns([1, 4])
                     with col1:
                         st.metric(display_title, f"{score}%" if score is not None else "N/A")
@@ -169,22 +178,23 @@ def analizar_script(script_texto):
                         if suggestion_text:
                             st.info(f"💡 Sugerencia: {suggestion_text}")
                 
-                elif display_title == "Longitud y Ritmo": # Sección especial sin % pero con sugerencia
+                # Sección de Longitud y Ritmo (sin puntuación pero con posible sugerencia)
+                elif display_title == "Longitud y Ritmo": 
                     st.markdown(f"**{display_title}:** {description_text}")
                     if suggestion_text:
                         st.info(f"💡 Sugerencia: {suggestion_text}")
                 
-                elif display_title == "Resumen General y Conclusión Final": # Sección final
+                # Sección de Resumen General (normalmente sin puntuación ni sugerencia en formato separado)
+                elif display_title == "Resumen General y Conclusión Final":
                     st.markdown(f"### {display_title}")
                     st.markdown(description_text) 
 
                 st.markdown("---") # Separador entre cada sección de análisis
             else:
-                # Esto es si una sección esperada no se encuentra en el texto de Gemini
-                # Puede ocurrir si Gemini omite una sección o cambia mucho el formato.
-                # Lo mostramos como una advertencia silenciosa o para depuración.
-                # st.warning(f"No se encontró la sección: {full_title_in_order}")
-                pass # No hacer nada si no se encuentra, para evitar un output "ruidoso"
+                # Esto se ejecutará si una sección del 'ordered_section_titles' no fue encontrada en la respuesta de Gemini.
+                # Lo podemos dejar en blanco o añadir un mensaje de depuración si es necesario.
+                # st.warning(f"No se encontró contenido para la sección: {full_title_in_order}")
+                pass # No hacer nada si no se encuentra el contenido de la sección para evitar "ruido"
 
         return "" # Ya mostramos todo directamente en Streamlit
 
