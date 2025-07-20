@@ -1,9 +1,7 @@
-# app.py (No necesita muchos cambios si ya está adaptado a Streamlit)
+# app.py (Versión actualizada para tema libre)
 
 import streamlit as st
-# Asegúrate de que las importaciones estén aquí
-from generadores import generar_script_reel, generar_copy_hooks
-from analizador_scripts import analizar_script
+from generadores import generar_script_reel, generar_copy_hooks, analizar_script # Asegúrate de que analizador_scripts se importe bien o se mueva
 
 # --- Configuración de la Página ---
 st.set_page_config(
@@ -16,64 +14,62 @@ st.set_page_config(
 st.title("🎬 Generador de Contenido para Reels y Redes Sociales")
 st.markdown("Crea scripts, copys y hooks para TikTok, Instagram y YouTube.")
 
-# --- Selección de Nicho Global ---
-nichos = ["Inteligencia Artificial", "Formula 1", "Marketing Digital", "Mindset", "Mascotas"]
-if 'nicho_seleccionado' not in st.session_state:
-    st.session_state.nicho_seleccionado = nichos[0]
-
-st.session_state.nicho_seleccionado = st.selectbox(
-    "Selecciona el Nicho para tu Contenido",
-    options=nichos,
-    index=nichos.index(st.session_state.nicho_seleccionado),
-    help="Elige el tema principal para tu contenido."
+# --- Campo de Texto para el Tema ---
+# Eliminamos el selectbox y añadimos un text_input
+tema_input = st.text_input(
+    "Ingresa el tema para tu Contenido",
+    placeholder="Ej: Marketing de afiliados para principiantes, Receta de arepas con queso, Últimas noticias de la Fórmula 1",
+    help="Escribe sobre qué quieres generar contenido."
 )
 
 st.sidebar.title("Navegación")
 opcion_seleccionada = st.sidebar.radio(
     "Ir a:",
-    ("Generador de Scripts", "Generador de Copys y Hooks", "Analizador de Scripts")
+    ("Generador de Contenido Completo", "Analizador de Scripts") # Renombrar o eliminar "Generador de Copys y Hooks"
 )
 
 # --- Contenido Principal Basado en la Opción Seleccionada ---
 
-if opcion_seleccionada == "Generador de Scripts":
-    st.header(f"✍️ Generador de Scripts para Reels - **{st.session_state.nicho_seleccionado}**")
-    st.write("Genera ideas y estructuras para tus videos de reels.")
+if opcion_seleccionada == "Generador de Contenido Completo": # Renombrado
+    st.header(f"✍️ Generador de Contenido Completo")
+    st.write("Genera ideas y estructuras para tus videos de reels, junto con copy y hooks.")
 
-    if st.button("Generar Script"):
-        with st.spinner('Generando script...'):
-            script = generar_script_reel(st.session_state.nicho_seleccionado) # Corrección ya aplicada
-            st.subheader("Script Generado:")
-            # Usar st.markdown para mostrar el script generado por la IA
-            # Ya que la respuesta puede venir en un formato más libre
-            for linea in script: # Iterar sobre las líneas de la respuesta de la IA
-                st.markdown(linea) # Mostrar cada línea como markdown
+    if st.button("Generar Contenido"): # Cambia el texto del botón
+        if tema_input: # Solo si el usuario ha ingresado un tema
+            with st.spinner(f'Generando contenido para "{tema_input}"...'):
+                # Generar Script
+                script = generar_script_reel(tema_input) # Pasamos el tema ingresado
+                st.subheader("Script Generado:")
+                for linea in script:
+                    st.markdown(linea)
 
-            st.markdown("---")
+                st.markdown("---")
 
-            st.subheader("Análisis Rápido del Script:")
-            script_completo_para_analizar = "\n".join(script) # Unir para el analizador
-            analisis_resultado = analizar_script(script_completo_para_analizar)
-            st.info(analisis_resultado)
+                # Generar Copy y Hooks para el script recién generado
+                st.subheader("Copy y Hooks Sugeridos para este Script:")
+                contenido_copy_hooks = generar_copy_hooks(tema_input, script) # Pasamos el tema y el script
+                
+                st.success(f"**Copy:** {contenido_copy_hooks['copy']}")
+                
+                st.markdown("**Hooks:**")
+                if contenido_copy_hooks['hooks']:
+                    for hook in contenido_copy_hooks['hooks']:
+                        st.info(f"- {hook}")
+                else:
+                    st.warning("No se pudieron generar hooks específicos para este script.")
 
-elif opcion_seleccionada == "Generador de Copys y Hooks":
-    st.header(f"📝 Generador de Copys y Hooks - **{st.session_state.nicho_seleccionado}**")
-    st.write("Crea textos atractivos para tus publicaciones y ganchos que capten la atención.")
+                st.markdown("---")
 
-    if st.button("Generar Copy y Hooks"):
-        with st.spinner('Generando copy y hooks...'):
-            contenido = generar_copy_hooks(st.session_state.nicho_seleccionado)
-            
-            st.subheader("Copy Sugerido:")
-            st.success(f"**{contenido['copy']}**")
-            
-            st.subheader("Hooks Sugeridos:")
-            if contenido['hooks']:
-                for hook in contenido['hooks']:
-                    st.info(f"- {hook}")
-            else:
-                st.warning("No se pudieron generar hooks específicos.")
+                st.subheader("Análisis Rápido del Script:")
+                script_completo_para_analizar = "\n".join(script)
+                analisis_resultado = analizar_script(script_completo_para_analizar)
+                st.info(analisis_resultado)
+        else:
+            st.warning("¡Por favor, ingresa un tema antes de generar contenido!")
 
+# Eliminamos o adaptamos la sección "Generador de Copys y Hooks" si ya no es necesaria como separada
+# Como ahora el copy y hooks se generan con el script, esta sección podría eliminarse
+# O como en el ejemplo anterior, adaptarla para generar solo copy/hooks con o sin un script
 elif opcion_seleccionada == "Analizador de Scripts":
     st.header("🔍 Analizador de Scripts")
     st.write("Pega aquí tu script para obtener un análisis y sugerencias.")
