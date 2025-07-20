@@ -1,126 +1,117 @@
-import openai # Librería de OpenAI para compatibilidad con DeepSeek
+import dashscope # ¡Nueva librería!
+from http import HTTPStatus # Para manejar los estados de respuesta HTTP
 import os
 import streamlit as st
 import re
 from dotenv import load_dotenv
 
-# Cargar variables de entorno (útil para desarrollo local)
 load_dotenv()
 
-# --- Configuración de la API de DeepSeek ---
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+# --- Configuración de la API de Qwen ---
+DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY")
 
-# URL base para la API de DeepSeek (¡IMPORTANTE!)
-DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
-
-# Inicializar el cliente de OpenAI apuntando a DeepSeek
-client = None # Inicializar a None por defecto
-if not DEEPSEEK_API_KEY:
-    st.error("Error: DEEPSEEK_API_KEY no encontrada. No se puede analizar el script.")
+if DASHSCOPE_API_KEY:
+    dashscope.api_key = DASHSCOPE_API_KEY
 else:
-    try:
-        # Crea un cliente de OpenAI, pero apuntando a la URL de DeepSeek
-        client = openai.OpenAI(
-            api_key=DEEPSEEK_API_KEY,
-            base_url=DEEPSEEK_BASE_URL
-        )
-    except Exception as e:
-        st.error(f"Error al inicializar el cliente de DeepSeek en analizador_scripts.py: {e}")
-        client = None
+    st.error("Error: DASHSCOPE_API_KEY no encontrada. No se puede analizar el script.")
+
+QWEN_MODEL_NAME = "qwen-turbo" # O "qwen-plus", "qwen-max", etc.
 
 def analizar_script(script_texto):
     """
-    Realiza un análisis avanzado de un script usando la API de DeepSeek AI (DeepSeek-V2).
+    Realiza un análisis avanzado de un script usando la API de Qwen (Dashscope).
     Presenta los resultados de manera más gráfica y con sugerencias específicas.
     """
     if not script_texto.strip():
         return "El script está vacío. No hay nada que analizar con la IA."
 
-    if client is None:
-        return "Cliente de DeepSeek API no inicializado. Revisa tu clave API y logs."
+    if not DASHSCOPE_API_KEY:
+        return "API Key de Qwen no configurada. Revisa los secretos de Streamlit o tu archivo .env."
 
-    # Inicializar full_analysis_text antes del try, para que siempre esté definida
     full_analysis_text = ""
 
-    # --- PROMPT para DeepSeek-V2 ---
-    prompt_text = f"""
-    Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
-    Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
-    Evalúa cada punto de forma crítica pero constructiva, y **siempre proporciona una sugerencia concreta o un ejemplo de cómo mejorar** si detectas una debilidad.
+    # --- Construir el mensaje para la API de Qwen ---
+    messages_payload = [
+        {"role": "system", "content": "Eres un analista de contenido de primer nivel para reels de redes sociales."},
+        {"role": "user", "content": f"""
+        Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
+        Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
+        Evalúa cada punto de forma crítica pero constructiva, y **siempre proporciona una sugerencia concreta o un ejemplo de cómo mejorar** si detectas una debilidad.
 
-    --- SCRIPT A ANALIZAR ---
-    {script_texto}
-    --- FIN SCRIPT ---
+        --- SCRIPT A ANALIZAR ---
+        {script_texto}
+        --- FIN SCRIPT ---
 
-    El análisis debe cubrir y presentar los siguientes puntos. Para los puntos con puntuación, genera un valor del 0 al 100%.
+        El análisis debe cubrir y presentar los siguientes puntos. Para los puntos con puntuación, genera un valor del 0 al 100%.
 
-    **Formato de Salida ABSOLUTAMENTE OBLIGATORIO para el parsing:**
-    Cada punto debe iniciar con su título numerado SIN negritas (ej. "1. Tono y Estilo:").
-    Si hay una puntuación, DEBE incluir la frase exacta "Puntuación: [X%]".
-    Si hay una sugerencia, DEBE incluir la frase exacta "Sugerencia: [Sugerencia concreta o ejemplo]".
+        **Formato de Salida ABSOLUTAMENTE OBLIGATORIO para el parsing:**
+        Cada punto debe iniciar con su título numerado SIN negritas (ej. "1. Tono y Estilo:").
+        Si hay una puntuación, DEBE incluir la frase exacta "Puntuación: [X%]".
+        Si hay una sugerencia, DEBE incluir la frase exacta "Sugerencia: [Sugerencia concreta o ejemplo]".
 
-    1. Tono y Estilo:
-    [Descripción del tono]. Puntuación: [X%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
+        1. Tono y Estilo:
+        [Descripción del tono]. Puntuación: [X%]
+        Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    2. Gancho (Hook):
-    [Efectividad del gancho]. Puntuación: [Y%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
+        2. Gancho (Hook):
+        [Efectividad del gancho]. Puntuación: [Y%]
+        Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    3. Desarrollo del Contenido:
-    [Claridad y progresión del mensaje]. Puntuación: [Z%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
+        3. Desarrollo del Contenido:
+        [Claridad y progresión del mensaje]. Puntuación: [Z%]
+        Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    4. Llamada a la Acción (CTA - Call To Action):
-    [Claridad y persuasión de la CTA]. Puntuación: [W%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
+        4. Llamada a la Acción (CTA - Call To Action):
+        [Claridad y persuasión de la CTA]. Puntuación: [W%]
+        Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    5. Originalidad y Creatividad:
-    [Nivel de originalidad y frescura]. Puntuación: [A%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
+        5. Originalidad y Creatividad:
+        [Nivel de originalidad y frescura]. Puntuación: [A%]
+        Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    6. Claridad y Concisión:
-    [Facilidad de comprensión y brevedad]. Puntuación: [B%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
+        6. Claridad y Concisión:
+        [Facilidad de comprensión y brevedad]. Puntuación: [B%]
+        Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    7. Longitud y Ritmo:
-    [Adecuación para reel (30-60s) y flujo general].
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
+        7. Longitud y Ritmo:
+        [Adecuación para reel (30-60s) y flujo general].
+        Sugerencia: [Sugerencia específica de mejora o un ejemplo].
 
-    8. Resumen General y Conclusión Final:
-    [Conclusión general y potencial. Mensaje motivador final].
-    """
+        8. Resumen General y Conclusión Final:
+        [Conclusión general y potencial. Mensaje motivador final].
+        """}
+    ]
 
-    st.info("✨ Enviando script a DeepSeek para un análisis *supercargado*...")
+    st.info("✨ Enviando script a Qwen para un análisis *supercargado*...")
     try:
-        # --- Llamada a la API de DeepSeek ---
-        response = client.chat.completions.create(
-            model="deepseek-chat", # Usamos el modelo generalista de DeepSeek
-            messages=[
-                {"role": "system", "content": "Eres un analista de contenido de primer nivel para reels de redes sociales."},
-                {"role": "user", "content": prompt_text}
-            ],
-            max_tokens=800, # Ajusta para que el análisis sea lo suficientemente largo
-            temperature=0.7,
-            stream=False, # <--- ¡CAMBIO IMPORTANTE AQUÍ! Asegurarse de no usar streaming
+        # --- Llamada a la API de Qwen usando dashscope ---
+        response = dashscope.Generation.call(
+            model=QWEN_MODEL_NAME,
+            messages=messages_payload,
+            # top_p=0.8,
+            # result_format='message',
         )
 
-        if response.choices and response.choices[0].message and response.choices[0].message.content:
-            full_analysis_text = response.choices[0].message.content
+        if response.status_code == HTTPStatus.OK:
+            if response.output and response.output.choices and response.output.choices[0].message and response.output.choices[0].message.content:
+                full_analysis_text = response.output.choices[0].message.content
+            else:
+                st.warning("😕 Qwen no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
+                return "No se pudo generar el análisis del script."
         else:
-            st.warning("😕 DeepSeek no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
-            return "No se pudo generar el análisis del script."
+            # Manejo de errores de la API de Qwen
+            return (f"Error de la API de Qwen (código {response.status_code}): "
+                    f"Código de error: {response.code}, Mensaje: {response.message}")
+
 
         st.success("✅ ¡Análisis completo generado!")
 
-        # --- Depuración (Mantener activo por si falla de nuevo) ---
-        st.expander("Ver respuesta RAW de DeepSeek (para depuración)").code(full_analysis_text)
+        st.expander("Ver respuesta RAW de Qwen (para depuración)").code(full_analysis_text)
 
-        # --- PARSING Y PRESENTACIÓN ---
+        # --- PARSING Y PRESENTACIÓN (No cambia, ya que el formato de salida se lo pedimos a Qwen) ---
         st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
 
-        # Patrón para identificar los títulos de sección (sin negritas, como lo pide el prompt)
         section_regex = re.compile(
             r"^\s*(?P<title>\d+\.\s*[^:]+):\s*(?P<content>.*?)(?=\s*\d+\.\s*[^:]+:|$)",
             re.MULTILINE | re.DOTALL
@@ -132,7 +123,6 @@ def analizar_script(script_texto):
             content = match.group('content').strip()
             parsed_data[title] = content
 
-        # Definir el orden deseado para las secciones
         ordered_section_titles = [
             "1. Tono y Estilo",
             "2. Gancho (Hook)",
@@ -144,7 +134,6 @@ def analizar_script(script_texto):
             "8. Resumen General y Conclusión Final"
         ]
 
-        # Iterar a través de los títulos en el orden deseado para la presentación
         for full_title_in_order in ordered_section_titles:
             content_raw = parsed_data.get(full_title_in_order, "")
 
@@ -155,19 +144,16 @@ def analizar_script(script_texto):
                 description_text = content_raw
                 suggestion_text = ""
 
-                # --- Extracción de Puntuación ---
                 score_match = re.search(r'Puntuación:\s*(\d+)%', content_raw, re.IGNORECASE)
                 if score_match:
                     score = int(score_match.group(1))
                     description_text = content_raw.split(score_match.group(0))[0].strip()
 
-                # --- Extracción de Sugerencia ---
                 suggestion_match = re.search(r'Sugerencia:\s*(.*)', content_raw, re.DOTALL | re.IGNORECASE)
                 if suggestion_match:
                     suggestion_text = suggestion_match.group(1).strip()
                     description_text = description_text.split('Sugerencia:')[0].strip()
 
-                # --- PRESENTACIÓN EN STREAMLIT ---
                 if display_title in ["Tono y Estilo", "Gancho (Hook)", "Desarrollo del Contenido",
                                      "Llamada a la Acción (CTA - Call To Action)", "Originalidad y Creatividad",
                                      "Claridad y Concisión"]:
@@ -197,23 +183,8 @@ def analizar_script(script_texto):
 
         return ""
 
-    except openai.APIConnectionError as e:
-        st.error(f"Error de conexión con la API de DeepSeek: {e}")
-        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error de conexión):**")
-        st.code("No se pudo conectar con la API de DeepSeek. Revisa tu conexión a internet o el estado del servicio.")
-        return f"Error de conexión: {e}"
-    except openai.RateLimitError as e:
-        st.error(f"Error de límite de cuota de DeepSeek: {e}. Has excedido tu cuota gratuita o tu límite de solicitudes. Por favor, espera o revisa tu plan.")
-        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error de cuota):**")
-        st.code("Cuota de API excedida. Por favor, espera o contacta al administrador.")
-        return f"Error de cuota: {e}"
-    except openai.APIStatusError as e:
-        st.error(f"Error de la API de DeepSeek (código {e.status_code}): {e.response.text}") # Usar .text para ver el detalle del error
-        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error de estado de API):**")
-        st.code(f"Error de API: {e.response.text}")
-        return f"Error de API: {e.response.text}"
     except Exception as e:
-        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script: {e}. Por favor, revisa tu código.")
-        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error en la app):**")
-        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de DeepSeek debido a un error interno.")
+        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script con Qwen: {e}. Por favor, revisa tu código.")
+        st.markdown("**Análisis de Qwen (Texto Crudo - Fallback por error en la app):**")
+        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de Qwen debido a un error interno.")
         return f"Error al analizar script: {e}"
