@@ -1,7 +1,8 @@
 # app.py (Versión actualizada para tema libre)
 
 import streamlit as st
-from generadores import generar_script_reel, generar_copy_hooks, analizar_script # Asegúrate de que analizador_scripts se importe bien o se mueva
+from generadores import generar_script_reel, generar_copy_hooks
+from analizador_scripts import analizar_script
 
 # --- Configuración de la Página ---
 st.set_page_config(
