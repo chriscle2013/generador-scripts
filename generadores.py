@@ -47,13 +47,13 @@ Escena 1: [Descripción de la escena 1]
 Escena 2: [Descripción de la escena 2]
 Escena 3: [Descripción de la escena 3 con llamada a la acción]
 """
-    st.info(f"Enviando prompt a Gemini para script (nicho: {nicho}):\n{prompt[:100]}...") # Mostrar inicio del prompt
+    st.info(f"Enviando prompt a la IA para generar tu script (nicho: {nicho}):\n{prompt[:100]}...") # Mostrar inicio del prompt
     try:
         response = model.generate_content(prompt)
         
         # Depuración: Verificar si la respuesta contiene contenido
         if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            st.success("¡Script generado por Gemini con éxito!")
+            st.success("¡Script generado por la IA con éxito!")
             return [part.text for part in response.candidates[0].content.parts]
         else:
             st.warning("Gemini no devolvió un script válido. Posiblemente un error interno de la API o contenido bloqueado.")
