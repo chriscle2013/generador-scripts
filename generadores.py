@@ -19,14 +19,14 @@ else:
     st.error("Error: GOOGLE_API_KEY no encontrada en los secretos de Streamlit. Por favor, configúrala.")
     genai = None
 
-# Inicializa el modelo Gemini Pro (texto)
-model = None # Inicializa a None para manejar el caso de error de configuración
-if genai: # Solo intenta inicializar si genai fue configurado
+# Inicializa el modelo Gemini 1.5 Flash (texto)
+model = None
+if genai:
     try:
-        model = genai.GenerativeModel('gemini-pro')
-        st.info("Modelo Gemini 'gemini-pro' cargado exitosamente.") # Esto solo se verá en el log si la app se carga
+        model = genai.GenerativeModel('gemini-1.5-flash') # <-- ASÍ DEBE QUEDAR
+        st.info("Modelo Gemini 'gemini-1.5-flash' cargado exitosamente.") # Actualiza el mensaje
     except Exception as e:
-        st.error(f"Error al inicializar el modelo Gemini 'gemini-pro': {e}")
+        st.error(f"Error al inicializar el modelo Gemini 'gemini-1.5-flash': {e}") # Actualiza el mensaje
         model = None
 
 def generar_script_reel(nicho):
