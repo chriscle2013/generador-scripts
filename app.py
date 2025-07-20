@@ -1,5 +1,9 @@
 # app.py
 
+# Importa las funciones de los módulos
+from generadores import generar_script_reel, generar_copy_hooks
+from analizador_scripts import analizar_script
+
 def mostrar_menu_principal():
     print("\n--- Generador de Contenido para Reels ---")
     print("1. Generar Script para Reel")
@@ -30,22 +34,38 @@ def main():
 
         if opcion == '1':
             nicho_seleccionado = seleccionar_nicho()
-            print(f"\nGenerando script para: {nicho_seleccionado}")
-            # Aquí llamaremos a la función del generador de scripts
-            # Por ahora, un mensaje de prueba
-            print(f"Script de ejemplo para {nicho_seleccionado}: '¡Descubre los secretos de la IA en menos de 60 segundos!'")
+            script_generado = generar_script_reel(nicho_seleccionado)
+            print(f"\n--- Script para {nicho_seleccionado} ---")
+            for linea in script_generado:
+                print(f"- {linea}")
+            # Puedes ofrecer la opción de analizarlo de inmediato
+            analizar_ahora = input("¿Quieres analizar este script ahora? (s/n): ").lower()
+            if analizar_ahora == 's':
+                # Unimos el script para pasarlo como un solo string
+                script_completo = " ".join(script_generado)
+                resultado_analisis = analizar_script(script_completo)
+                print(f"Resultado del análisis: {resultado_analisis}")
+
         elif opcion == '2':
             nicho_seleccionado = seleccionar_nicho()
-            print(f"\nGenerando copy y hooks para: {nicho_seleccionado}")
-            # Aquí llamaremos a la función del generador de copys y hooks
-            # Por ahora, mensajes de prueba
-            print(f"Copy: '¡No te pierdas este reel lleno de tips de {nicho_seleccionado}! #reelviral #{nicho_seleccionado.lower().replace(' ', '')}'")
-            print(f"Hook: '¿Quieres dominar {nicho_seleccionado}?'")
+            contenido_generado = generar_copy_hooks(nicho_seleccionado)
+            print(f"\n--- Copy y Hooks para {nicho_seleccionado} ---")
+            print(f"**Copy:** {contenido_generado['copy']}")
+            print("**Hooks:**")
+            for hook in contenido_generado['hooks']:
+                print(f"- {hook}")
+
         elif opcion == '3':
-            print("\nActivando el módulo de análisis de scripts...")
-            # Aquí llamaremos a tu módulo de análisis
-            # Por ahora, un mensaje de prueba
-            print("Análisis de script completado (simulado).")
+            # Para analizar un script en esta opción, podríamos pedir al usuario que lo pegue
+            # o que indique un archivo. Por ahora, lo haremos simple:
+            print("\nIntroduce el script que deseas analizar (o 'salir' para cancelar):")
+            script_para_analizar = input("Script: ")
+            if script_para_analizar.lower() != 'salir':
+                resultado_analisis = analizar_script(script_para_analizar)
+                print(f"Resultado del análisis: {resultado_analisis}")
+            else:
+                print("Análisis cancelado.")
+
         elif opcion == '4':
             print("Saliendo de la aplicación. ¡Hasta luego!")
             break
