@@ -95,7 +95,7 @@ def analizar_script(script_texto):
     try:
         # --- Llamada a la API de DeepSeek ---
         response = client.chat.completions.create(
-            model="deepseek-v2", # Usamos el modelo generalista de DeepSeek
+            model="deepseek-chat", # Usamos el modelo generalista de DeepSeek
             messages=[
                 {"role": "system", "content": "Eres un analista de contenido de primer nivel para reels de redes sociales."},
                 {"role": "user", "content": prompt_text}
