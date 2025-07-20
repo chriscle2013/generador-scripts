@@ -1,4 +1,4 @@
-import openai # Aunque es DeepSeek, usamos la librería de OpenAI para compatibilidad
+import openai # Librería de OpenAI para compatibilidad con DeepSeek
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- Configuración de la API de DeepSeek ---
-# Asegúrate de que DEEPSEEK_API_KEY esté configurada en los secretos de Streamlit Cloud
-# o en tu archivo .env local.
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 
 # URL base para la API de DeepSeek (¡IMPORTANTE!)
@@ -20,6 +18,7 @@ if not DEEPSEEK_API_KEY:
     st.error("Error: DEEPSEEK_API_KEY no encontrada. No se puede generar el script.")
 else:
     try:
+        # Crea un cliente de OpenAI, pero apuntando a la URL de DeepSeek
         client = openai.OpenAI(
             api_key=DEEPSEEK_API_KEY,
             base_url=DEEPSEEK_BASE_URL
@@ -84,6 +83,7 @@ def generar_script(tema, objetivo, estilo, duracion):
             ],
             max_tokens=500, # Ajusta según la longitud deseada del script
             temperature=0.7, # Creatividad (0.0-1.0)
+            stream=False, # <--- ¡CAMBIO IMPORTANTE AQUÍ! Asegurarse de no usar streaming
         )
 
         # Acceder al contenido de la respuesta
@@ -99,8 +99,8 @@ def generar_script(tema, objetivo, estilo, duracion):
         st.error(f"Error de límite de cuota de DeepSeek: {e}. Has excedido tu cuota gratuita o tu límite de solicitudes. Por favor, espera o revisa tu plan.")
         return f"Error de cuota: {e}"
     except openai.APIStatusError as e:
-        st.error(f"Error de la API de DeepSeek (código {e.status_code}): {e.response}")
-        return f"Error de API: {e}"
+        st.error(f"Error de la API de DeepSeek (código {e.status_code}): {e.response.text}") # Usar .text para ver el detalle del error
+        return f"Error de API: {e.response.text}"
     except Exception as e:
         st.error(f"Ocurrió un error inesperado al generar el script: {e}")
         return f"Error inesperado: {e}"
