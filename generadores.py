@@ -1,30 +1,41 @@
-import openai
+import openai # Aunque es DeepSeek, usamos la librería de OpenAI para compatibilidad
 import os
 import streamlit as st
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# Cargar variables de entorno (útil para desarrollo local)
 load_dotenv()
 
-# --- Configuración de la API de OpenAI ---
-# Asegúrate de que OPENAI_API_KEY esté configurada en los secretos de Streamlit Cloud
+# --- Configuración de la API de DeepSeek ---
+# Asegúrate de que DEEPSEEK_API_KEY esté configurada en los secretos de Streamlit Cloud
 # o en tu archivo .env local.
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 
-if not OPENAI_API_KEY:
-    st.error("Error: OPENAI_API_KEY no encontrada. Por favor, configúrala en los secretos de Streamlit o en tu archivo .env.")
-    openai.api_key = None # Asegurarse de que la API key no se settee si no existe
+# URL base para la API de DeepSeek (¡IMPORTANTE!)
+DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+
+# Inicializar el cliente de OpenAI apuntando a DeepSeek
+client = None # Inicializar a None por defecto
+if not DEEPSEEK_API_KEY:
+    st.error("Error: DEEPSEEK_API_KEY no encontrada. No se puede generar el script.")
 else:
-    openai.api_key = OPENAI_API_KEY
+    try:
+        client = openai.OpenAI(
+            api_key=DEEPSEEK_API_KEY,
+            base_url=DEEPSEEK_BASE_URL
+        )
+    except Exception as e:
+        st.error(f"Error al inicializar el cliente de DeepSeek en generadores.py: {e}")
+        client = None
 
 def generar_script(tema, objetivo, estilo, duracion):
     """
-    Genera un script para un reel de redes sociales usando la API de OpenAI (GPT-3.5 Turbo).
+    Genera un script para un reel de redes sociales usando la API de DeepSeek AI (DeepSeek-V2).
     """
-    if not openai.api_key:
-        return "API Key de OpenAI no configurada. No se puede generar el script."
+    if client is None:
+        return "Cliente de DeepSeek API no inicializado. Revisa tu clave API y logs."
 
-    # --- Prompt para GPT-3.5 Turbo ---
+    # --- Prompt para DeepSeek-V2 ---
     prompt_text = f"""
     Eres un experto creador de contenido para redes sociales (TikTok, Instagram Reels, YouTube Shorts).
     Tu tarea es generar un script detallado y creativo para un reel, basado en la siguiente información:
@@ -64,9 +75,9 @@ def generar_script(tema, objetivo, estilo, duracion):
     """
 
     try:
-        # --- Llamada a la API de OpenAI ---
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo", # Puedes probar con "gpt-4o" si tienes acceso y más cuota
+        # --- Llamada a la API de DeepSeek ---
+        response = client.chat.completions.create(
+            model="deepseek-v2", # Usamos el modelo generalista de DeepSeek
             messages=[
                 {"role": "system", "content": "Eres un experto creador de contenido para redes sociales."},
                 {"role": "user", "content": prompt_text}
@@ -74,7 +85,7 @@ def generar_script(tema, objetivo, estilo, duracion):
             max_tokens=500, # Ajusta según la longitud deseada del script
             temperature=0.7, # Creatividad (0.0-1.0)
         )
-        
+
         # Acceder al contenido de la respuesta
         if response.choices and response.choices[0].message and response.choices[0].message.content:
             return response.choices[0].message.content
@@ -82,14 +93,14 @@ def generar_script(tema, objetivo, estilo, duracion):
             return "No se pudo generar el script. La respuesta de la IA estaba vacía o incompleta."
 
     except openai.APIConnectionError as e:
-        st.error(f"Error de conexión con la API de OpenAI: {e}")
+        st.error(f"Error de conexión con la API de DeepSeek: {e}")
         return f"Error de conexión: {e}"
     except openai.RateLimitError as e:
-        st.error(f"Error de límite de cuota de OpenAI: {e}. Has excedido tu cuota gratuita o tu límite de solicitudes. Por favor, espera o revisa tu plan.")
+        st.error(f"Error de límite de cuota de DeepSeek: {e}. Has excedido tu cuota gratuita o tu límite de solicitudes. Por favor, espera o revisa tu plan.")
         return f"Error de cuota: {e}"
     except openai.APIStatusError as e:
-        st.error(f"Error de la API de OpenAI (código {e.status_code}): {e.response}")
-        return f"Error de API: {e.response}"
+        st.error(f"Error de la API de DeepSeek (código {e.status_code}): {e.response}")
+        return f"Error de API: {e}"
     except Exception as e:
         st.error(f"Ocurrió un error inesperado al generar el script: {e}")
         return f"Error inesperado: {e}"
