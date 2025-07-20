@@ -1,9 +1,9 @@
 import google.generativeai as genai
 import os
 import streamlit as st
-import re # Importar para usar expresiones regulares
+import re
 
-# Configuración de la API y el modelo (se mantiene igual, es crucial que funcione)
+# Configuración de la API y el modelo (se mantiene igual)
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 if GOOGLE_API_KEY:
@@ -27,160 +27,190 @@ if genai:
 def analizar_script(script_texto):
     """
     Realiza un análisis avanzado de un script usando Google Gemini, evaluando tono, hook, CTA, etc.
-    Presenta los resultados de manera más gráfica.
+    Presenta los resultados de manera más gráfica y con sugerencias específicas.
     """
     if not script_texto.strip():
         return "El script está vacío. No hay nada que analizar con la IA."
 
     if model is None:
-        st.error("No se puede analizar el script: Modelo de IA no inicializado. Revisa tu clave API y logs.")
+        st.error("⚠️ No se puede analizar el script: Modelo de IA no inicializado. Revisa tu clave API y logs.")
         return "Error: Modelo de IA para análisis no inicializado."
 
     prompt = f"""
-    Eres un experto analista de contenido para reels de redes sociales (TikTok, Instagram, YouTube Shorts).
-    Tu tarea es analizar el siguiente script para un reel y proporcionar un feedback detallado.
-    Evalúa los siguientes puntos y sé constructivo en tus sugerencias.
+    Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
+    Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
+    Evalúa cada punto de forma crítica pero constructiva, y **siempre proporciona una sugerencia concreta o un ejemplo de cómo mejorar** si detectas una debilidad.
 
     --- SCRIPT A ANALIZAR ---
     {script_texto}
     --- FIN SCRIPT ---
 
-    El análisis debe cubrir:
-    1.  **Tono y Estilo:** Evalúa el tono general del script (ej. inspirador, humorístico, informativo, etc.). Asigna una puntuación del 0 al 100% sobre lo bien que el tono general se adapta al objetivo probable de un reel (ser atractivo y dinámico).
-    2.  **Gancho (Hook):** Evalúa la efectividad del inicio del script para captar la atención en los primeros segundos. Asigna una puntuación del 0 al 100% sobre la fortaleza del hook.
-    3.  **Desarrollo del Contenido:** Evalúa cómo fluye el mensaje. ¿Es claro, conciso y hay una progresión lógica? Asigna una puntuación del 0 al 100% a la claridad y fluidez.
-    4.  **Llamada a la Acción (CTA - Call To Action):** Evalúa si la CTA final es clara y persuasiva. Asigna una puntuación del 0 al 100% a la efectividad de la CTA.
-    5.  **Longitud y Ritmo:** ¿Es apropiado para un reel corto (30-60 segundos)? Evalúa del 0 al 100% su adecuación.
+    El análisis debe cubrir y presentar los siguientes puntos. Para los puntos con puntuación, genera un valor del 0 al 100%.
 
-    Presenta tu análisis en el siguiente formato estructurado. Cada punto principal debe estar en una nueva línea y seguido de la descripción y la puntuación si aplica. Utiliza 'Puntuación:' para los porcentajes.
-    
-    Tono y Estilo: [Descripción del tono]. Puntuación: [X%]
-    Gancho (Hook): [Descripción del hook]. Puntuación: [Y%]
-    Desarrollo del Contenido: [Descripción del desarrollo]. Puntuación: [Z%]
-    Llamada a la Acción (CTA): [Descripción de la CTA]. Puntuación: [W%]
-    Longitud y Ritmo: [Descripción de longitud]. Puntuación: [V%]
-    Sugerencias Generales: [Aquí van recomendaciones adicionales].
+    1.  **Tono y Estilo (0-100%):**
+        * Describe el tono general del script (ej. inspirador, humorístico, informativo, dramático).
+        * Evalúa lo bien que este tono se adapta al objetivo de un reel (ser atractivo, dinámico, memorable).
+        * **Puntuación:** [X%]
+        * **Sugerencia:** [Sugerencia específica de mejora o un ejemplo].
+
+    2.  **Gancho (Hook) (0-100%):**
+        * Evalúa la efectividad del inicio del script para captar la atención en los primeros 3-5 segundos.
+        * ¿Genera curiosidad, emoción, o resuelve un problema inicial?
+        * **Puntuación:** [Y%]
+        * **Sugerencia:** [Sugerencia específica de mejora o un ejemplo].
+
+    3.  **Desarrollo del Contenido (0-100%):**
+        * ¿Fluye bien el mensaje principal? ¿Es claro, conciso y hay una progresión lógica de la idea?
+        * ¿Se mantiene el interés a lo largo del script?
+        * **Puntuación:** [Z%]
+        * **Sugerencia:** [Sugerencia específica de mejora o un ejemplo].
+
+    4.  **Llamada a la Acción (CTA - Call To Action) (0-100%):**
+        * ¿Es la CTA final clara, persuasiva y fácil de entender para el espectador qué debe hacer a continuación?
+        * ¿Es única o inspiradora?
+        * **Puntuación:** [W%]
+        * **Sugerencia:** [Sugerencia específica de mejora o un ejemplo].
+
+    5.  **Originalidad y Creatividad (0-100%):**
+        * ¿El script ofrece una perspectiva única o un enfoque creativo?
+        * ¿Se destaca de lo común?
+        * **Puntuación:** [A%]
+        * **Sugerencia:** [Sugerencia específica de mejora o un ejemplo].
+
+    6.  **Claridad y Concisión (0-100%):**
+        * ¿El mensaje es directo y fácil de comprender?
+        * ¿Se eliminaron las palabras innecesarias y el script es breve para la duración del reel?
+        * **Puntuación:** [B%]
+        * **Sugerencia:** [Sugerencia específica de mejora o un ejemplo].
+
+    7.  **Longitud y Ritmo (Evaluación General):**
+        * ¿Es apropiado para un reel corto (30-60 segundos)?
+        * ¿Sugiere algún ajuste de ritmo (ej. más rápido, pausas)?
+        * **Sugerencia:** [Sugerencia específica de mejora o un ejemplo].
+
+    8.  **Resumen General y Conclusión Final:**
+        * Ofrece una conclusión general sobre la fortaleza del script y su potencial.
+        * Termina con un mensaje motivador.
+
+    Presenta tu análisis de manera atractiva usando Markdown para encabezados, negritas y listas.
     """
 
-    st.info("Enviando script a Gemini para un análisis detallado...")
+    st.info("✨ Enviando script a Gemini para un análisis *supercargado*...")
     try:
         response = model.generate_content(prompt)
         
         if not (response.candidates and response.candidates[0].content and response.candidates[0].content.parts):
-            st.warning("Gemini no devolvió un análisis válido. Intenta de nuevo.")
+            st.warning("😕 Gemini no devolvió un análisis válido. Parece que no hubo contenido o fue bloqueado. Intenta de nuevo.")
             return "No se pudo generar el análisis del script."
 
         full_analysis_text = "".join([part.text for part in response.candidates[0].content.parts])
         
-        st.success("¡Análisis generado!")
+        st.success("✅ ¡Análisis completo generado!")
 
-        # Extraer puntos y puntuaciones usando regex o splitting
-        lines = full_analysis_text.split('\n')
+        # --- Parsear la respuesta para una presentación estructurada ---
+        # Este parsing se vuelve más complejo porque la IA puede variar el formato levemente.
+        # Intentaremos extraer cada sección con sus subtítulos de forma robusta.
         
         # Diccionario para almacenar los resultados parseados
-        parsed_results = {
-            "Tono y Estilo": {"desc": "", "score": None},
-            "Gancho (Hook)": {"desc": "", "score": None},
-            "Desarrollo del Contenido": {"desc": "", "score": None},
-            "Llamada a la Acción (CTA)": {"desc": "", "score": None},
-            "Longitud y Ritmo": {"desc": "", "score": None},
-            "Sugerencias Generales": ""
-        }
+        # Guardaremos el texto completo de cada sección para luego formatearlo en Streamlit
+        parsed_sections = {}
+        current_section_title = None
+        
+        # Usamos expresiones regulares para identificar los títulos de sección y las puntuaciones
+        section_titles_regex = re.compile(
+            r"^(1\.\s*\*Tono y Estilo\*\*|2\.\s*\*Gancho \(Hook\)\*\*|3\.\s*\*Desarrollo del Contenido\*\*|"
+            r"4\.\s*\*Llamada a la Acción \(CTA\)\*\*|5\.\s*\*Originalidad y Creatividad\*\*|"
+            r"6\.\s*\*Claridad y Concisión\*\*|7\.\s*\*Longitud y Ritmo\*\*|"
+            r"8\.\s*\*Resumen General y Conclusión Final\*\*:?)"
+        )
 
-        current_key = None
+        lines = full_analysis_text.split('\n')
         for line in lines:
-            if line.startswith("Tono y Estilo:"):
-                current_key = "Tono y Estilo"
-            elif line.startswith("Gancho (Hook):"):
-                current_key = "Gancho (Hook)"
-            elif line.startswith("Desarrollo del Contenido:"):
-                current_key = "Desarrollo del Contenido"
-            elif line.startswith("Llamada a la Acción (CTA):"):
-                current_key = "Llamada a la Acción (CTA)"
-            elif line.startswith("Longitud y Ritmo:"):
-                current_key = "Longitud y Ritmo"
-            elif line.startswith("Sugerencias Generales:"):
-                current_key = "Sugerencias Generales"
+            line = line.strip()
+            if not line: # Ignorar líneas vacías
+                continue
+
+            match_title = section_titles_regex.match(line)
+            if match_title:
+                current_section_title = match_title.group(0).replace('*', '') # Quitar negritas para la clave
+                parsed_sections[current_section_title] = []
             
-            if current_key:
-                # Extraer descripción y puntuación
-                match = re.search(r'Puntuación: (\d+%)', line)
-                if match:
-                    score_str = match.group(1).replace('%', '')
-                    parsed_results[current_key]["score"] = int(score_str)
-                    # La descripción es todo lo demás antes de "Puntuación:"
-                    parsed_results[current_key]["desc"] = line.split("Puntuación:")[0].replace(f"{current_key}:", "").strip()
-                else:
-                    # Si no hay puntuación (para Sugerencias Generales o si IA falla el formato)
-                    if current_key == "Sugerencias Generales":
-                        parsed_results[current_key] += line.replace(f"{current_key}:", "").strip() + "\n"
-                    else:
-                        parsed_results[current_key]["desc"] = line.replace(f"{current_key}:", "").strip()
+            if current_section_title:
+                parsed_sections[current_section_title].append(line)
 
         # --- Presentación Gráfica en Streamlit ---
-        st.subheader("📊 Análisis Detallado del Script")
-        
-        # Tono y Estilo
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.metric("Tono", f"{parsed_results['Tono y Estilo']['score']}%" if parsed_results['Tono y Estilo']['score'] is not None else "N/A")
-        with col2:
-            st.markdown(f"**Tono y Estilo:** {parsed_results['Tono y Estilo']['desc']}")
-            if parsed_results['Tono y Estilo']['score'] is not None:
-                st.progress(parsed_results['Tono y Estilo']['score'])
-
-        st.markdown("---")
-
-        # Gancho (Hook)
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.metric("Hook", f"{parsed_results['Gancho (Hook)']['score']}%" if parsed_results['Gancho (Hook)']['score'] is not None else "N/A")
-        with col2:
-            st.markdown(f"**Gancho (Hook):** {parsed_results['Gancho (Hook)']['desc']}")
-            if parsed_results['Gancho (Hook)']['score'] is not None:
-                st.progress(parsed_results['Gancho (Hook)']['score'])
-        
-        st.markdown("---")
-
-        # Desarrollo del Contenido
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.metric("Desarrollo", f"{parsed_results['Desarrollo del Contenido']['score']}%" if parsed_results['Desarrollo del Contenido']['score'] is not None else "N/A")
-        with col2:
-            st.markdown(f"**Desarrollo del Contenido:** {parsed_results['Desarrollo del Contenido']['desc']}")
-            if parsed_results['Desarrollo del Contenido']['score'] is not None:
-                st.progress(parsed_results['Desarrollo del Contenido']['score'])
-
+        st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
         
-        # Llamada a la Acción (CTA)
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.metric("CTA", f"{parsed_results['Llamada a la Acción (CTA)']['score']}%" if parsed_results['Llamada a la Acción (CTA)']['score'] is not None else "N/A")
-        with col2:
-            st.markdown(f"**Llamada a la Acción (CTA):** {parsed_results['Llamada a la Acción (CTA)']['desc']}")
-            if parsed_results['Llamada a la Acción (CTA)']['score'] is not None:
-                st.progress(parsed_results['Llamada a la Acción (CTA)']['score'])
+        # Iterar a través de las secciones y mostrarlas
+        ordered_keys = [
+            "1. Tono y Estilo",
+            "2. Gancho (Hook)",
+            "3. Desarrollo del Contenido",
+            "4. Llamada a la Acción (CTA)",
+            "5. Originalidad y Creatividad",
+            "6. Claridad y Concisión",
+            "7. Longitud y Ritmo",
+            "8. Resumen General y Conclusión Final"
+        ]
 
-        st.markdown("---")
+        for key_prefix in ordered_keys:
+            # Encontrar la clave exacta que usó la IA (puede incluir un ':')
+            full_key = next((k for k in parsed_sections if k.startswith(key_prefix)), None)
+            
+            if full_key and parsed_sections[full_key]:
+                section_content_lines = parsed_sections[full_key]
+                
+                # Intentar extraer puntuación y descripción para métricas
+                score = None
+                description = []
+                suggestion = []
 
-        # Longitud y Ritmo
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.metric("Longitud", f"{parsed_results['Longitud y Ritmo']['score']}%" if parsed_results['Longitud y Ritmo']['score'] is not None else "N/A")
-        with col2:
-            st.markdown(f"**Longitud y Ritmo:** {parsed_results['Longitud y Ritmo']['desc']}")
-            if parsed_results['Longitud y Ritmo']['score'] is not None:
-                st.progress(parsed_results['Longitud y Ritmo']['score'])
+                # Secciones con puntuación
+                if key_prefix in ["1. Tono y Estilo", "2. Gancho (Hook)", "3. Desarrollo del Contenido",
+                                  "4. Llamada a la Acción (CTA)", "5. Originalidad y Creatividad",
+                                  "6. Claridad y Concisión"]:
+                    
+                    # El primer elemento de la lista debe contener la puntuación y la descripción principal
+                    main_line = section_content_lines[0]
+                    score_match = re.search(r'Puntuación: (\d+%)', main_line)
+                    if score_match:
+                        score_str = score_match.group(1).replace('%', '')
+                        score = int(score_str)
+                        description_part = main_line.replace(f"{score_match.group(0)}", "").replace(f"{key_prefix}:", "").strip()
+                        if description_part:
+                            description.append(description_part)
+                    else:
+                        # Si no hay puntuación en la primera línea, es la descripción
+                        description.append(main_line.replace(f"{key_prefix}:", "").strip())
+                    
+                    # El resto de las líneas pueden ser la sugerencia
+                    for line_idx in range(1, len(section_content_lines)):
+                        line_content = section_content_lines[line_idx].replace('**Sugerencia:**', '').strip()
+                        if line_content:
+                            suggestion.append(line_content)
+                    
+                    col1, col2 = st.columns([1, 4])
+                    with col1:
+                        st.metric(key_prefix.replace('. ', '. ')[3:], f"{score}%" if score is not None else "N/A")
+                    with col2:
+                        st.markdown(f"**{key_prefix.replace('1. ', '').replace('2. ', '').replace('3. ', '').replace('4. ', '').replace('5. ', '').replace('6. ', '')}:** {' '.join(description)}")
+                        if score is not None:
+                            st.progress(score)
+                        if suggestion:
+                            st.info(f"💡 Sugerencia: {' '.join(suggestion)}")
+                
+                # Secciones sin puntuación (como Longitud y Ritmo, Resumen General)
+                else:
+                    st.markdown(f"### {key_prefix}")
+                    # Unimos todas las líneas de la sección y las mostramos
+                    section_text = "\n".join(section_content_lines).replace(f"{key_prefix}:", "").strip()
+                    st.markdown(section_text)
+                
+                st.markdown("---") # Separador entre cada sección de análisis
 
-        st.markdown("---")
-
-        # Sugerencias Generales en un expander
-        with st.expander("💡 Sugerencias Generales para Mejorar"):
-            st.markdown(parsed_results["Sugerencias Generales"])
-
-        return "" # No devolvemos el texto plano, lo mostramos directamente
+        return "" # No devolvemos el texto plano, lo mostramos directamente en Streamlit
 
     except Exception as e:
-        st.error(f"Error al conectar con la IA para análisis de script: {e}. Revisa tu clave API y límites de uso.")
+        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script: {e}. Por favor, revisa tu clave API y los logs de Streamlit Cloud.")
         return f"Error al analizar script: {e}"
