@@ -1,5 +1,5 @@
 # generadores.py
-
+#
 def generar_script_reel(nicho):
     """Genera un script simple para un reel basado en el nicho."""
     scripts_ejemplo = {
