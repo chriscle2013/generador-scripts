@@ -1,88 +1,69 @@
 import streamlit as st
-from generadores import generar_script_reel, generar_copy_hooks
+import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
+
+# Importar funciones desde tus módulos
+from generador_scripts import generar_script
 from analizador_scripts import analizar_script
 
-# --- Configuración de la Página ---
-st.set_page_config(
-    page_title="Generador de Contenido para Reels",
-    page_icon="🎬",
-    layout="centered"
-)
+st.set_page_config(layout="wide", page_title="Generador de Scripts para Reels 🎬")
 
-# --- Título Principal ---
-st.title("🎬 Generador de Contenido para Reels y Redes Sociales")
-st.markdown("Crea scripts, copys y hooks para TikTok, Instagram y YouTube.")
+# --- Configuración de la API (Se mueve la carga de la clave al nivel de cada módulo) ---
+# Asegúrate de que OPENAI_API_KEY esté configurada en los secretos de Streamlit Cloud
+# o en tu archivo .env local.
 
-# --- Campo de Texto para el Tema ---
-tema_input = st.text_input(
-    "Ingresa el tema para tu Contenido",
-    placeholder="Ej: Marketing de afiliados para principiantes, Receta de arepas con queso, Últimas noticias de la Fórmula 1",
-    help="Escribe sobre qué quieres generar contenido."
-)
+st.title("Generador y Analizador de Scripts para Reels 🎬")
+st.markdown("Crea y optimiza scripts virales para TikTok, Instagram y YouTube Shorts.")
 
-st.sidebar.title("Navegación")
-opcion_seleccionada = st.sidebar.radio(
-    "Ir a:",
-    ("Generador de Contenido Completo", "Analizador de Scripts")
-)
+# --- Entrada del Usuario ---
+st.header("1. Creador de Scripts ✍️")
+tema = st.text_input("💡 Tema de tu Reel:", help="Ej: Receta de arepas, trucos para estudiar, noticias de última hora de F1.")
+objetivo = st.selectbox("🎯 Objetivo del Reel:", 
+                        ["Captar la atención y educar", "Entretener y generar interacción", "Vender un producto/servicio", "Generar leads/suscripciones", "Viralizar un concepto"],
+                        help="¿Qué quieres lograr con este Reel?")
+estilo = st.selectbox("🎭 Estilo/Tono deseado:", 
+                      ["Informativo y directo", "Humorístico y sarcástico", "Inspirador y motivacional", "Dramático y sensacionalista", "Curioso y misterioso"],
+                      help="¿Cómo quieres que suene tu Reel?")
+duracion = st.slider("⏱️ Duración aproximada (segundos):", 15, 90, 30, step=5, help="La duración ideal para un Reel.")
 
-# --- Contenido Principal Basado en la Opción Seleccionada ---
+if st.button("✨ Generar Script"):
+    if tema:
+        with st.spinner("Generando tu script con IA... ¡Esto puede tomar unos segundos! 🤖"):
+            script_generado = generar_script(tema, objetivo, estilo, duracion)
+            if script_generado:
+                st.subheader("📝 Script Generado:")
+                st.write(script_generado)
+                st.session_state['last_generated_script'] = script_generado
+            else:
+                st.error("No se pudo generar el script. Intenta de nuevo.")
+    else:
+        st.warning("Por favor, ingresa el tema del Reel para generar el script.")
 
-if opcion_seleccionada == "Generador de Contenido Completo":
-    st.header(f"✍️ Generador de Contenido Completo")
-    st.write("Genera ideas y estructuras para tus videos de reels, junto con copy y hooks.")
+# --- Analizador de Scripts ---
+st.header("2. Analizador de Scripts 📊")
+script_para_analizar = ""
+if 'last_generated_script' in st.session_state and st.session_state['last_generated_script']:
+    st.info("Script generado automáticamente cargado para análisis.")
+    script_para_analizar = st.session_state['last_generated_script']
+else:
+    st.info("Pega tu script para analizarlo (o genera uno primero).")
 
-    if st.button("Generar Contenido"):
-        if tema_input:
-            with st.spinner(f'Generando contenido para "{tema_input}"...'):
-                # Generar Script
-                script = generar_script_reel(tema_input)
-                st.subheader("Script Generado:")
-                for linea in script:
-                    st.markdown(linea)
+script_completo_para_analizar = st.text_area("✍️ Pega el script completo aquí para analizar:", 
+                                            value=script_para_analizar, height=300)
 
-                st.markdown("---")
-
-                # Generar Copy y Hooks para el script recién generado
-                st.subheader("Copy y Hooks Sugeridos para este Script:")
-                contenido_copy_hooks = generar_copy_hooks(tema_input, script)
-                
-                st.success(f"**Copy:** {contenido_copy_hooks['copy']}")
-                
-                st.markdown("**Hooks:**")
-                if contenido_copy_hooks['hooks']:
-                    for hook in contenido_copy_hooks['hooks']:
-                        st.info(f"- {hook}")
-                else:
-                    st.warning("No se pudieron generar hooks específicos para este script.")
-
-                st.markdown("---")
-
-                st.subheader("Análisis Rápido del Script:")
-                script_completo_para_analizar = "\n".join(script)
-                analisis_resultado = analizar_script(script_completo_para_analizar)
-                st.info(analisis_resultado)
-        else:
-            st.warning("¡Por favor, ingresa un tema antes de generar contenido!")
-
-elif opcion_seleccionada == "Analizador de Scripts":
-    st.header("🔍 Analizador de Scripts")
-    st.write("Pega aquí tu script para obtener un análisis y sugerencias.")
-
-    script_input = st.text_area(
-        "Pega tu script aquí:",
-        height=200,
-        placeholder="Ej: Escena 1: Presenta el problema. Escena 2: Muestra la solución con un producto de IA..."
-    )
-
-    if st.button("Analizar Script"):
-        if script_input:
-            with st.spinner('Analizando script...'):
-                resultado_analisis = analizar_script(script_input)
-                st.subheader("Resultados del Análisis:")
-                st.info(resultado_analisis)
-        else:
-            st.warning("Por favor, pega un script para analizar.")
+if st.button("🔬 Analizar Script"):
+    if script_completo_para_analizar:
+        with st.spinner("Analizando tu script con IA... ¡Casi listo! 🧠"):
+            # La función analizar_script ahora renderiza directamente en Streamlit
+            analisis_resultado = analizar_script(script_completo_para_analizar)
+            if analisis_resultado: # Si hay un string de error, lo mostramos
+                st.error(analisis_resultado)
+            # Si la función retorna vacío, significa que ya renderizó el contenido
+    else:
+        st.warning("Por favor, pega un script o genera uno para analizar.")
 
 st.markdown("---")
 st.markdown("Desarrollado con ❤️ por tu asistente de Python.")
