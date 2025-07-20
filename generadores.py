@@ -76,7 +76,7 @@ def generar_script(tema, objetivo, estilo, duracion):
     try:
         # --- Llamada a la API de DeepSeek ---
         response = client.chat.completions.create(
-            model="deepseek-v2", # Usamos el modelo generalista de DeepSeek
+            model="deepseek-chat", # Usamos el modelo generalista de DeepSeek
             messages=[
                 {"role": "system", "content": "Eres un experto creador de contenido para redes sociales."},
                 {"role": "user", "content": prompt_text}
