@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Importar funciones desde tus módulos
-from generador_scripts import generar_script
+ffrom generadores import generar_script
 from analizador_scripts import analizar_script
 
 st.set_page_config(layout="wide", page_title="Generador de Scripts para Reels 🎬")
