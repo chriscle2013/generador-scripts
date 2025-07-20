@@ -1,36 +1,47 @@
-import openai
+import openai # Aunque es DeepSeek, usamos la librería de OpenAI para compatibilidad
 import os
 import streamlit as st
 import re
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# Cargar variables de entorno (útil para desarrollo local)
 load_dotenv()
 
-# --- Configuración de la API de OpenAI ---
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+# --- Configuración de la API de DeepSeek ---
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 
-if not OPENAI_API_KEY:
-    st.error("Error: OPENAI_API_KEY no encontrada. Por favor, configúrala en los secretos de Streamlit o en tu archivo .env.")
-    openai.api_key = None
+# URL base para la API de DeepSeek (¡IMPORTANTE!)
+DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+
+# Inicializar el cliente de OpenAI apuntando a DeepSeek
+client = None # Inicializar a None por defecto
+if not DEEPSEEK_API_KEY:
+    st.error("Error: DEEPSEEK_API_KEY no encontrada. No se puede analizar el script.")
 else:
-    openai.api_key = OPENAI_API_KEY
+    try:
+        client = openai.OpenAI(
+            api_key=DEEPSEEK_API_KEY,
+            base_url=DEEPSEEK_BASE_URL
+        )
+    except Exception as e:
+        st.error(f"Error al inicializar el cliente de DeepSeek en analizador_scripts.py: {e}")
+        client = None
 
 def analizar_script(script_texto):
     """
-    Realiza un análisis avanzado de un script usando la API de OpenAI (GPT-3.5 Turbo).
+    Realiza un análisis avanzado de un script usando la API de DeepSeek AI (DeepSeek-V2).
     Presenta los resultados de manera más gráfica y con sugerencias específicas.
     """
     if not script_texto.strip():
         return "El script está vacío. No hay nada que analizar con la IA."
 
-    if not openai.api_key:
-        return "API Key de OpenAI no configurada. No se puede analizar el script."
+    if client is None:
+        return "Cliente de DeepSeek API no inicializado. Revisa tu clave API y logs."
 
     # Inicializar full_analysis_text antes del try, para que siempre esté definida
-    full_analysis_text = "" 
-    
-    # --- PROMPT para GPT-3.5 Turbo ---
+    full_analysis_text = ""
+
+    # --- PROMPT para DeepSeek-V2 ---
     prompt_text = f"""
     Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
     Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
@@ -79,11 +90,11 @@ def analizar_script(script_texto):
     [Conclusión general y potencial. Mensaje motivador final].
     """
 
-    st.info("✨ Enviando script a OpenAI para un análisis *supercargado*...")
+    st.info("✨ Enviando script a DeepSeek para un análisis *supercargado*...") # Mensaje actualizado
     try:
-        # --- Llamada a la API de OpenAI ---
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo", # Puedes probar con "gpt-4o" si tienes acceso y más cuota
+        # --- Llamada a la API de DeepSeek ---
+        response = client.chat.completions.create(
+            model="deepseek-v2", # Usamos el modelo generalista de DeepSeek
             messages=[
                 {"role": "system", "content": "Eres un analista de contenido de primer nivel para reels de redes sociales."},
                 {"role": "user", "content": prompt_text}
@@ -91,31 +102,31 @@ def analizar_script(script_texto):
             max_tokens=800, # Ajusta para que el análisis sea lo suficientemente largo
             temperature=0.7,
         )
-        
+
         if response.choices and response.choices[0].message and response.choices[0].message.content:
             full_analysis_text = response.choices[0].message.content
         else:
-            st.warning("😕 OpenAI no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
+            st.warning("😕 DeepSeek no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
             return "No se pudo generar el análisis del script."
 
         st.success("✅ ¡Análisis completo generado!")
 
-        # --- Depuración TEMPORAL (Mantener activo por si falla de nuevo) ---
-        st.expander("Ver respuesta RAW de OpenAI (para depuración)").code(full_analysis_text)
-        
-        # --- PARSING MÁS ROBUSTO Y PRESENTACIÓN ---
+        # --- Depuración (Mantener activo por si falla de nuevo) ---
+        st.expander("Ver respuesta RAW de DeepSeek (para depuración)").code(full_analysis_text)
+
+        # --- PARSING Y PRESENTACIÓN ---
         st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
-        
+
         # Patrón para identificar los títulos de sección (sin negritas, como lo pide el prompt)
         section_regex = re.compile(
             r"^\s*(?P<title>\d+\.\s*[^:]+):\s*(?P<content>.*?)(?=\s*\d+\.\s*[^:]+:|$)",
             re.MULTILINE | re.DOTALL
         )
-        
+
         parsed_data = {}
         for match in section_regex.finditer(full_analysis_text):
-            title = match.group('title').strip() 
+            title = match.group('title').strip()
             content = match.group('content').strip()
             parsed_data[title] = content
 
@@ -134,8 +145,8 @@ def analizar_script(script_texto):
         # Iterar a través de los títulos en el orden deseado para la presentación
         for full_title_in_order in ordered_section_titles:
             content_raw = parsed_data.get(full_title_in_order, "")
-            
-            if content_raw: 
+
+            if content_raw:
                 display_title = re.sub(r'^\d+\.\s*', '', full_title_in_order).strip()
 
                 score = None
@@ -147,7 +158,7 @@ def analizar_script(script_texto):
                 if score_match:
                     score = int(score_match.group(1))
                     description_text = content_raw.split(score_match.group(0))[0].strip()
-                
+
                 # --- Extracción de Sugerencia ---
                 suggestion_match = re.search(r'Sugerencia:\s*(.*)', content_raw, re.DOTALL | re.IGNORECASE)
                 if suggestion_match:
@@ -158,7 +169,7 @@ def analizar_script(script_texto):
                 if display_title in ["Tono y Estilo", "Gancho (Hook)", "Desarrollo del Contenido",
                                      "Llamada a la Acción (CTA - Call To Action)", "Originalidad y Creatividad",
                                      "Claridad y Concisión"]:
-                    
+
                     col1, col2 = st.columns([1, 4])
                     with col1:
                         st.metric(display_title, f"{score}%" if score is not None else "N/A")
@@ -168,39 +179,39 @@ def analizar_script(script_texto):
                             st.progress(score)
                         if suggestion_text:
                             st.info(f"💡 Sugerencia: {suggestion_text}")
-                
-                elif display_title == "Longitud y Ritmo": 
+
+                elif display_title == "Longitud y Ritmo":
                     st.markdown(f"**{display_title}:** {description_text}")
                     if suggestion_text:
                         st.info(f"💡 Sugerencia: {suggestion_text}")
-                
+
                 elif display_title == "Resumen General y Conclusión Final":
                     st.markdown(f"### {display_title}")
-                    st.markdown(description_text) 
+                    st.markdown(description_text)
 
-                st.markdown("---") 
+                st.markdown("---")
             else:
-                pass 
+                pass
 
-        return "" 
+        return ""
 
     except openai.APIConnectionError as e:
-        st.error(f"Error de conexión con la API de OpenAI: {e}")
-        st.markdown("**Análisis de OpenAI (Texto Crudo - Fallback por error de conexión):**")
-        st.code("No se pudo conectar con la API de OpenAI. Revisa tu conexión a internet o el estado del servicio.")
+        st.error(f"Error de conexión con la API de DeepSeek: {e}")
+        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error de conexión):**")
+        st.code("No se pudo conectar con la API de DeepSeek. Revisa tu conexión a internet o el estado del servicio.")
         return f"Error de conexión: {e}"
     except openai.RateLimitError as e:
-        st.error(f"Error de límite de cuota de OpenAI: {e}. Has excedido tu cuota gratuita o tu límite de solicitudes. Por favor, espera o revisa tu plan.")
-        st.markdown("**Análisis de OpenAI (Texto Crudo - Fallback por error de cuota):**")
+        st.error(f"Error de límite de cuota de DeepSeek: {e}. Has excedido tu cuota gratuita o tu límite de solicitudes. Por favor, espera o revisa tu plan.")
+        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error de cuota):**")
         st.code("Cuota de API excedida. Por favor, espera o contacta al administrador.")
         return f"Error de cuota: {e}"
     except openai.APIStatusError as e:
-        st.error(f"Error de la API de OpenAI (código {e.status_code}): {e.response}")
-        st.markdown("**Análisis de OpenAI (Texto Crudo - Fallback por error de estado de API):**")
+        st.error(f"Error de la API de DeepSeek (código {e.status_code}): {e.response}")
+        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error de estado de API):**")
         st.code(f"Error de API: {e.response}")
         return f"Error de API: {e.response}"
     except Exception as e:
         st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script: {e}. Por favor, revisa tu código.")
-        st.markdown("**Análisis de OpenAI (Texto Crudo - Fallback por error en la app):**")
-        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de OpenAI debido a un error interno.")
+        st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error en la app):**")
+        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de DeepSeek debido a un error interno.")
         return f"Error al analizar script: {e}"
