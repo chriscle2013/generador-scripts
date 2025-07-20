@@ -41,7 +41,7 @@ if opcion_seleccionada == "Generador de Scripts":
 
     if st.button("Generar Script"):
         with st.spinner('Generando script...'):
-            script = generar_script_reel(st.session_selected_nicho)
+            script = generar_script_reel(st.session_state.nicho_seleccionado)
             st.subheader("Script Generado:")
             script_str = "\n".join([f"- {linea}" for linea in script])
             st.markdown(script_str)
