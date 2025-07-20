@@ -3,7 +3,7 @@ import os
 import streamlit as st
 import re
 
-# Configuración de la API y el modelo (se mantiene igual)
+# Configuración de la API y el modelo (mantener igual)
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 if GOOGLE_API_KEY:
@@ -36,8 +36,7 @@ def analizar_script(script_texto):
         st.error("⚠️ No se puede analizar el script: Modelo de IA no inicializado. Revisa tu clave API y logs.")
         return "Error: Modelo de IA para análisis no inicializado."
 
-    # --- PROMPT MEJORADO PARA MAYOR ROBUSTEZ EN EL FORMATO ---
-    # Se insiste en el formato, pero el parsing será más indulgente.
+    # --- PROMPT (Mantenemos el prompt, ya que el contenido es bueno) ---
     prompt = f"""
     Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
     Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
@@ -98,43 +97,29 @@ def analizar_script(script_texto):
         
         st.success("✅ ¡Análisis completo generado!")
 
-        # --- Depuración TEMPORAL: Mostrar el texto crudo de la IA ---
-        # Si las gráficas no aparecen, DESCOMENTA esta línea para ver el texto exacto que Gemini devuelve.
-        # st.expander("Ver respuesta RAW de Gemini (para depuración)").code(full_analysis_text)
+        # --- Depuración TEMPORAL (Mantener activo por si falla de nuevo) ---
+        st.expander("Ver respuesta RAW de Gemini (para depuración)").code(full_analysis_text)
         
-        # --- PARSING MÁS ROBUSTO Y PRESENTACIÓN ---
+        # --- PARSING MÁS ROBUSTO CON re.finditer ---
         st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
         
-        # Patrón para identificar cada sección principal (títulos en negritas)
-        # Hacemos el patrón más flexible para capturar el título incluso sin los dos puntos
-        section_pattern = re.compile(
-            r"^\s*\*\*(1\.\s*Tono y Estilo|2\.\s*Gancho \(Hook\)|3\.\s*Desarrollo del Contenido|"
-            r"4\.\s*Llamada a la Acción \(CTA\)|5\.\s*Originalidad y Creatividad|"
-            r"6\.\s*Claridad y Concisión|7\.\s*Longitud y Ritmo|8\.\s*Resumen General y Conclusión Final)\*\*[:.\s]*", 
-            re.MULTILINE
+        # Patrón para identificar los títulos de sección.
+        # Captura el título completo (ej. "1. Tono y Estilo") y también el texto hasta la siguiente sección.
+        # re.DOTALL permite que '.' coincida con saltos de línea
+        section_regex = re.compile(
+            r"^\s*\*\*(?P<title>\d+\.\s*[^:]+)\*\*[:\s]*(?P<content>.*?)(?=\s*\*\*(\d+\.\s*)|$)",
+            re.MULTILINE | re.DOTALL
         )
         
-        # Dividir el texto por los títulos de las secciones. Usamos un patrón que captura el delimitador.
-        parts = section_pattern.split(full_analysis_text)
-        
-        # El primer elemento de 'parts' será el texto antes del primer título.
-        # Luego, los elementos alternarán entre el título capturado y el contenido de la sección.
-        
-        sections_data = {}
-        current_title = None
+        parsed_data = {}
+        for match in section_regex.finditer(full_analysis_text):
+            title = match.group('title').strip()
+            content = match.group('content').strip()
+            parsed_data[title] = content
 
-        # Iterar sobre las partes y reconstruir las secciones
-        # La primera parte (parts[0]) es el preámbulo o vacía, la ignoramos para las secciones
-        for i in range(1, len(parts)):
-            if i % 2 == 1: # Es un título
-                current_title = parts[i].strip()
-                sections_data[current_title] = ""
-            else: # Es el contenido de la sección
-                if current_title:
-                    sections_data[current_title] = parts[i].strip()
-
-        ordered_keys_raw = [
+        # Definir el orden deseado para las secciones
+        ordered_section_titles = [
             "1. Tono y Estilo",
             "2. Gancho (Hook)",
             "3. Desarrollo del Contenido",
@@ -145,24 +130,14 @@ def analizar_script(script_texto):
             "8. Resumen General y Conclusión Final"
         ]
 
-        for key_prefix_raw in ordered_keys_raw:
-            # Encontrar la clave exacta que está en sections_data (puede incluir o no los dos puntos al final si Gemini los pone)
-            # Normalizamos para la búsqueda
-            normalized_key_prefix = key_prefix_raw.replace('**', '').strip()
-
-            found_key = None
-            for stored_key in sections_data.keys():
-                # Comparamos la parte inicial de la clave almacenada con la clave esperada
-                if stored_key.strip().startswith(normalized_key_prefix):
-                    found_key = stored_key
-                    break
+        # Iterar a través de los títulos en el orden deseado para la presentación
+        for full_title_in_order in ordered_section_titles:
+            content_raw = parsed_data.get(full_title_in_order)
             
-            if found_key and sections_data[found_key]:
-                content_raw = sections_data[found_key]
-                
-                # Limpiar el título para la presentación (quitar número y estrellas)
-                display_title = normalized_key_prefix.replace('1. ', '').replace('2. ', '').replace('3. ', '').replace('4. ', '').replace('5. ', '').replace('6. ', '').replace('7. ', '').replace('8. ', '').strip()
-                
+            if content_raw:
+                # Limpiar el título para la presentación
+                display_title = full_title_in_order.split('.', 1)[1].strip() # Quita el número y el primer punto
+
                 score = None
                 description_text = content_raw
                 suggestion_text = ""
@@ -175,6 +150,7 @@ def analizar_script(script_texto):
                     description_text = content_raw.split(score_match.group(0))[0].strip()
                 
                 # --- Extracción de Sugerencia ---
+                # Usar re.DOTALL para que '.' coincida con saltos de línea si la sugerencia es multi-línea
                 suggestion_match = re.search(r'Sugerencia:\s*(.*)', content_raw, re.DOTALL | re.IGNORECASE)
                 if suggestion_match:
                     suggestion_text = suggestion_match.group(1).strip()
@@ -182,10 +158,7 @@ def analizar_script(script_texto):
                     description_text = description_text.split('Sugerencia:')[0].strip()
 
                 # --- PRESENTACIÓN EN STREAMLIT ---
-                if display_title in ["Tono y Estilo", "Gancho (Hook)", "Desarrollo del Contenido",
-                                     "Llamada a la Acción (CTA)", "Originalidad y Creatividad",
-                                     "Claridad y Concisión"]:
-                    
+                if "Puntuación" in full_title_in_order: # Para secciones que deben tener métrica y progreso
                     col1, col2 = st.columns([1, 4])
                     with col1:
                         st.metric(display_title, f"{score}%" if score is not None else "N/A")
@@ -196,30 +169,28 @@ def analizar_script(script_texto):
                         if suggestion_text:
                             st.info(f"💡 Sugerencia: {suggestion_text}")
                 
-                # Secciones sin puntuación específica pero con posible sugerencia
-                elif display_title == "Longitud y Ritmo":
+                elif display_title == "Longitud y Ritmo": # Sección especial sin % pero con sugerencia
                     st.markdown(f"**{display_title}:** {description_text}")
                     if suggestion_text:
                         st.info(f"💡 Sugerencia: {suggestion_text}")
                 
-                # Resumen General (normalmente sin puntuación ni sugerencia en formato separado)
-                elif display_title == "Resumen General y Conclusión Final":
+                elif display_title == "Resumen General y Conclusión Final": # Sección final
                     st.markdown(f"### {display_title}")
-                    st.markdown(description_text) # La descripción aquí es el resumen completo
+                    st.markdown(description_text) 
 
                 st.markdown("---") # Separador entre cada sección de análisis
-
             else:
-                # Fallback si una sección esperada no se encuentra o está vacía después del parsing
-                st.markdown(f"**⚠️ No se pudo extraer la sección '{display_title}'.**")
-                # Opcional: st.code(sections_data.get(found_key, "Contenido no encontrado"))
-                st.markdown("---")
+                # Esto es si una sección esperada no se encuentra en el texto de Gemini
+                # Puede ocurrir si Gemini omite una sección o cambia mucho el formato.
+                # Lo mostramos como una advertencia silenciosa o para depuración.
+                # st.warning(f"No se encontró la sección: {full_title_in_order}")
+                pass # No hacer nada si no se encuentra, para evitar un output "ruidoso"
 
-        return "" # No devolvemos el texto plano, lo mostramos directamente
+        return "" # Ya mostramos todo directamente en Streamlit
 
     except Exception as e:
-        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script: {e}. Por favor, revisa tu clave API y los logs de Streamlit Cloud.")
-        # Muestra el texto completo de Gemini como fallback en caso de error de parsing grave
-        st.markdown("**Análisis de Gemini (Texto Crudo - Fallback por error de parsing):**")
+        # Aquí capturamos cualquier error durante el parsing o la presentación
+        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script: {e}. Por favor, revisa tu código.")
+        st.markdown("**Análisis de Gemini (Texto Crudo - Fallback por error en la app):**")
         st.code(full_analysis_text)
         return f"Error al analizar script: {e}"
