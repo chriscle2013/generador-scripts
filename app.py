@@ -1,6 +1,7 @@
-# app.py (VERSIÓN CORREGIDA PARA STREAMLIT)
+# app.py (No necesita muchos cambios si ya está adaptado a Streamlit)
 
 import streamlit as st
+# Asegúrate de que las importaciones estén aquí
 from generadores import generar_script_reel, generar_copy_hooks
 from analizador_scripts import analizar_script
 
@@ -41,15 +42,17 @@ if opcion_seleccionada == "Generador de Scripts":
 
     if st.button("Generar Script"):
         with st.spinner('Generando script...'):
-            script = generar_script_reel(st.session_state.nicho_seleccionado)
+            script = generar_script_reel(st.session_state.nicho_seleccionado) # Corrección ya aplicada
             st.subheader("Script Generado:")
-            script_str = "\n".join([f"- {linea}" for linea in script])
-            st.markdown(script_str)
+            # Usar st.markdown para mostrar el script generado por la IA
+            # Ya que la respuesta puede venir en un formato más libre
+            for linea in script: # Iterar sobre las líneas de la respuesta de la IA
+                st.markdown(linea) # Mostrar cada línea como markdown
 
             st.markdown("---")
 
             st.subheader("Análisis Rápido del Script:")
-            script_completo_para_analizar = " ".join(script)
+            script_completo_para_analizar = "\n".join(script) # Unir para el analizador
             analisis_resultado = analizar_script(script_completo_para_analizar)
             st.info(analisis_resultado)
 
@@ -65,8 +68,11 @@ elif opcion_seleccionada == "Generador de Copys y Hooks":
             st.success(f"**{contenido['copy']}**")
             
             st.subheader("Hooks Sugeridos:")
-            for hook in contenido['hooks']:
-                st.info(f"- {hook}")
+            if contenido['hooks']:
+                for hook in contenido['hooks']:
+                    st.info(f"- {hook}")
+            else:
+                st.warning("No se pudieron generar hooks específicos.")
 
 elif opcion_seleccionada == "Analizador de Scripts":
     st.header("🔍 Analizador de Scripts")
