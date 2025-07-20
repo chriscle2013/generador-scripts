@@ -1,4 +1,4 @@
-import openai # Aunque es DeepSeek, usamos la librería de OpenAI para compatibilidad
+import openai # Librería de OpenAI para compatibilidad con DeepSeek
 import os
 import streamlit as st
 import re
@@ -19,6 +19,7 @@ if not DEEPSEEK_API_KEY:
     st.error("Error: DEEPSEEK_API_KEY no encontrada. No se puede analizar el script.")
 else:
     try:
+        # Crea un cliente de OpenAI, pero apuntando a la URL de DeepSeek
         client = openai.OpenAI(
             api_key=DEEPSEEK_API_KEY,
             base_url=DEEPSEEK_BASE_URL
@@ -90,7 +91,7 @@ def analizar_script(script_texto):
     [Conclusión general y potencial. Mensaje motivador final].
     """
 
-    st.info("✨ Enviando script a DeepSeek para un análisis *supercargado*...") # Mensaje actualizado
+    st.info("✨ Enviando script a DeepSeek para un análisis *supercargado*...")
     try:
         # --- Llamada a la API de DeepSeek ---
         response = client.chat.completions.create(
@@ -101,6 +102,7 @@ def analizar_script(script_texto):
             ],
             max_tokens=800, # Ajusta para que el análisis sea lo suficientemente largo
             temperature=0.7,
+            stream=False, # <--- ¡CAMBIO IMPORTANTE AQUÍ! Asegurarse de no usar streaming
         )
 
         if response.choices and response.choices[0].message and response.choices[0].message.content:
@@ -206,10 +208,10 @@ def analizar_script(script_texto):
         st.code("Cuota de API excedida. Por favor, espera o contacta al administrador.")
         return f"Error de cuota: {e}"
     except openai.APIStatusError as e:
-        st.error(f"Error de la API de DeepSeek (código {e.status_code}): {e.response}")
+        st.error(f"Error de la API de DeepSeek (código {e.status_code}): {e.response.text}") # Usar .text para ver el detalle del error
         st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error de estado de API):**")
-        st.code(f"Error de API: {e.response}")
-        return f"Error de API: {e.response}"
+        st.code(f"Error de API: {e.response.text}")
+        return f"Error de API: {e.response.text}"
     except Exception as e:
         st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script: {e}. Por favor, revisa tu código.")
         st.markdown("**Análisis de DeepSeek (Texto Crudo - Fallback por error en la app):**")
