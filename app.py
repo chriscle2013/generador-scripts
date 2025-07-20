@@ -1,76 +1,92 @@
-# app.py
+# app.py (para Streamlit)
 
-# Importa las funciones de los módulos
+import streamlit as st
 from generadores import generar_script_reel, generar_copy_hooks
 from analizador_scripts import analizar_script
 
-def mostrar_menu_principal():
-    print("\n--- Generador de Contenido para Reels ---")
-    print("1. Generar Script para Reel")
-    print("2. Generar Copy y Hooks")
-    print("3. Analizar Script (Módulo Externo)")
-    print("4. Salir")
-    opcion = input("Selecciona una opción: ")
-    return opcion
+# --- Configuración de la Página ---
+st.set_page_config(
+    page_title="Generador de Contenido para Reels",
+    page_icon="🎬",
+    layout="centered"
+)
 
-def seleccionar_nicho():
-    nichos = ["Inteligencia Artificial", "Formula 1", "Marketing Digital", "Mindset", "Mascotas"]
-    print("\n--- Selecciona un Nicho ---")
-    for i, nicho in enumerate(nichos):
-        print(f"{i + 1}. {nicho}")
-    while True:
-        try:
-            opcion = int(input("Ingresa el número del nicho: "))
-            if 1 <= opcion <= len(nichos):
-                return nichos[opcion - 1]
-            else:
-                print("Opción inválida. Intenta de nuevo.")
-        except ValueError:
-            print("Entrada inválida. Por favor, ingresa un número.")
+# --- Título Principal ---
+st.title("🎬 Generador de Contenido para Reels y Redes Sociales")
+st.markdown("Crea scripts, copys y hooks para TikTok, Instagram y YouTube.")
 
-def main():
-    while True:
-        opcion = mostrar_menu_principal()
+# --- Selección de Nicho Global ---
+nichos = ["Inteligencia Artificial", "Formula 1", "Marketing Digital", "Mindset", "Mascotas"]
+# Usamos session_state para mantener el nicho seleccionado entre cambios de página
+if 'nicho_seleccionado' not in st.session_state:
+    st.session_state.nicho_seleccionado = nichos[0] # Valor por defecto
 
-        if opcion == '1':
-            nicho_seleccionado = seleccionar_nicho()
-            script_generado = generar_script_reel(nicho_seleccionado)
-            print(f"\n--- Script para {nicho_seleccionado} ---")
-            for linea in script_generado:
-                print(f"- {linea}")
-            # Puedes ofrecer la opción de analizarlo de inmediato
-            analizar_ahora = input("¿Quieres analizar este script ahora? (s/n): ").lower()
-            if analizar_ahora == 's':
-                # Unimos el script para pasarlo como un solo string
-                script_completo = " ".join(script_generado)
-                resultado_analisis = analizar_script(script_completo)
-                print(f"Resultado del análisis: {resultado_analisis}")
+st.session_state.nicho_seleccionado = st.selectbox(
+    "Selecciona el Nicho para tu Contenido",
+    options=nichos,
+    index=nichos.index(st.session_state.nicho_seleccionado), # Mantiene la selección
+    help="Elige el tema principal para tu contenido."
+)
 
-        elif opcion == '2':
-            nicho_seleccionado = seleccionar_nicho()
-            contenido_generado = generar_copy_hooks(nicho_seleccionado)
-            print(f"\n--- Copy y Hooks para {nicho_seleccionado} ---")
-            print(f"**Copy:** {contenido_generado['copy']}")
-            print("**Hooks:**")
-            for hook in contenido_generado['hooks']:
-                print(f"- {hook}")
+st.sidebar.title("Navegación")
+opcion_seleccionada = st.sidebar.radio(
+    "Ir a:",
+    ("Generador de Scripts", "Generador de Copys y Hooks", "Analizador de Scripts")
+)
 
-        elif opcion == '3':
-            # Para analizar un script en esta opción, podríamos pedir al usuario que lo pegue
-            # o que indique un archivo. Por ahora, lo haremos simple:
-            print("\nIntroduce el script que deseas analizar (o 'salir' para cancelar):")
-            script_para_analizar = input("Script: ")
-            if script_para_analizar.lower() != 'salir':
-                resultado_analisis = analizar_script(script_para_analizar)
-                print(f"Resultado del análisis: {resultado_analisis}")
-            else:
-                print("Análisis cancelado.")
+# --- Contenido Principal Basado en la Opción Seleccionada ---
 
-        elif opcion == '4':
-            print("Saliendo de la aplicación. ¡Hasta luego!")
-            break
+if opcion_seleccionada == "Generador de Scripts":
+    st.header(f"✍️ Generador de Scripts para Reels - **{st.session_state.nicho_seleccionado}**")
+    st.write("Genera ideas y estructuras para tus videos de reels.")
+
+    if st.button("Generar Script"):
+        with st.spinner('Generando script...'):
+            script = generar_script_reel(st.session_state.nicho_seleccionado)
+            st.subheader("Script Generado:")
+            script_str = "\n".join([f"- {linea}" for linea in script])
+            st.markdown(script_str)
+
+            st.markdown("---") # Separador visual
+
+            st.subheader("Análisis Rápido del Script:")
+            script_completo_para_analizar = " ".join(script) # Unimos el script para el análisis
+            analisis_resultado = analizar_script(script_completo_para_analizar)
+            st.info(analisis_resultado)
+
+elif opcion_seleccionada == "Generador de Copys y Hooks":
+    st.header(f"📝 Generador de Copys y Hooks - **{st.session_state.nicho_seleccionado}**")
+    st.write("Crea textos atractivos para tus publicaciones y ganchos que capten la atención.")
+
+    if st.button("Generar Copy y Hooks"):
+        with st.spinner('Generando copy y hooks...'):
+            contenido = generar_copy_hooks(st.session_state.nicho_seleccionado)
+            
+            st.subheader("Copy Sugerido:")
+            st.success(f"**{contenido['copy']}**")
+            
+            st.subheader("Hooks Sugeridos:")
+            for hook in contenido['hooks']:
+                st.info(f"- {hook}")
+
+elif opcion_seleccionada == "Analizador de Scripts":
+    st.header("🔍 Analizador de Scripts")
+    st.write("Pega aquí tu script para obtener un análisis y sugerencias.")
+
+    script_input = st.text_area(
+        "Pega tu script aquí:",
+        height=200,
+        placeholder="Ej: Escena 1: Presenta el problema. Escena 2: Muestra la solución con un producto de IA..."
+    )
+
+    if st.button("Analizar Script"):
+        if script_input:
+            with st.spinner('Analizando script...'):
+                resultado_analisis = analizar_script(script_input)
+                st.subheader("Resultados del Análisis:")
+                st.info(resultado_analisis)
         else:
-            print("Opción no válida. Por favor, intenta de nuevo.")
+            st.warning("Por favor, pega un script para analizar.")
 
-if __name__ == "__main__":
-    main()
+st.markdown("---")
+st.markdown("Desarrollado con ❤️ por tu asistente de Python.")
