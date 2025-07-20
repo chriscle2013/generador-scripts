@@ -1,4 +1,4 @@
-# app.py (para Streamlit)
+# app.py (VERSIÓN CORREGIDA PARA STREAMLIT)
 
 import streamlit as st
 from generadores import generar_script_reel, generar_copy_hooks
@@ -17,14 +17,13 @@ st.markdown("Crea scripts, copys y hooks para TikTok, Instagram y YouTube.")
 
 # --- Selección de Nicho Global ---
 nichos = ["Inteligencia Artificial", "Formula 1", "Marketing Digital", "Mindset", "Mascotas"]
-# Usamos session_state para mantener el nicho seleccionado entre cambios de página
 if 'nicho_seleccionado' not in st.session_state:
-    st.session_state.nicho_seleccionado = nichos[0] # Valor por defecto
+    st.session_state.nicho_seleccionado = nichos[0]
 
 st.session_state.nicho_seleccionado = st.selectbox(
     "Selecciona el Nicho para tu Contenido",
     options=nichos,
-    index=nichos.index(st.session_state.nicho_seleccionado), # Mantiene la selección
+    index=nichos.index(st.session_state.nicho_seleccionado),
     help="Elige el tema principal para tu contenido."
 )
 
@@ -42,15 +41,15 @@ if opcion_seleccionada == "Generador de Scripts":
 
     if st.button("Generar Script"):
         with st.spinner('Generando script...'):
-            script = generar_script_reel(st.session_state.nicho_seleccionado)
+            script = generar_script_reel(st.session_selected_nicho)
             st.subheader("Script Generado:")
             script_str = "\n".join([f"- {linea}" for linea in script])
             st.markdown(script_str)
 
-            st.markdown("---") # Separador visual
+            st.markdown("---")
 
             st.subheader("Análisis Rápido del Script:")
-            script_completo_para_analizar = " ".join(script) # Unimos el script para el análisis
+            script_completo_para_analizar = " ".join(script)
             analisis_resultado = analizar_script(script_completo_para_analizar)
             st.info(analisis_resultado)
 
