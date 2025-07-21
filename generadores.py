@@ -20,7 +20,7 @@ else:
 model = None
 if genai:
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash') # Usando 'gemini-1.5-flash'
+        model = genai.GenerativeModel('gemini-2.5-flash') # Usando 'gemini-2.5-flash'
         # st.info("Modelo Gemini 'gemini-1.5-flash' cargado exitosamente.") # Comentado para evitar el info constante en la UI
     except Exception as e:
         st.error(f"Error al inicializar el modelo Gemini 'gemini-1.5-flash': {e}")
