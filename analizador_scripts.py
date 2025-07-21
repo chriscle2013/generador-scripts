@@ -1,5 +1,5 @@
 # analizador_scripts.py
-from huggingface_hub import InferenceClient # Removed HfHub
+from huggingface_hub import InferenceClient
 import os
 import streamlit as st
 import re
@@ -9,7 +9,9 @@ load_dotenv()
 
 # --- Configuración de la API de Hugging Face ---
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
-HF_MODEL_NAME = "deepseek-ai/DeepSeek-R1-0528"
+
+# Mismo nombre de modelo que en generadores.py
+HF_MODEL_NAME = "microsoft/Phi-4-mini-flash-reasoning"
 
 client = None
 if not HF_API_TOKEN:
@@ -22,6 +24,9 @@ else:
         client = None
 
 def analizar_script(script_texto):
+    """
+    Realiza un análisis avanzado de un script usando la API de Hugging Face (Phi-4-mini-flash-reasoning).
+    """
     if not script_texto.strip():
         return "El script está vacío. No hay nada que analizar con la IA."
 
@@ -30,6 +35,7 @@ def analizar_script(script_texto):
 
     full_analysis_text = ""
 
+    # --- Prompt para Phi-4-mini-flash-reasoning ---
     prompt_text = f"""
     Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
     Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
@@ -78,24 +84,27 @@ def analizar_script(script_texto):
     [Conclusión general y potencial. Mensaje motivador final].
     """
 
-    st.info("✨ Enviando script a DeepSeek-R1-0528 (Hugging Face) para un análisis *supercargado*...")
+    st.info(f"✨ Enviando script a {HF_MODEL_NAME} (Hugging Face) para un análisis *supercargado*...")
     try:
+        # --- Llamada a la API de Hugging Face para text-generation ---
         response = client.text_generation(
             prompt=prompt_text,
             max_new_tokens=800,
-            temperature=0.6,
+            temperature=0.7, # Puedes ajustar para más o menos creatividad
         )
 
         if response:
             full_analysis_text = response
         else:
-            st.warning("😕 DeepSeek-R1-0528 no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
+            st.warning(f"😕 {HF_MODEL_NAME} no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
             return "No se pudo generar el análisis del script."
 
         st.success("✅ ¡Análisis completo generado!")
 
-        st.expander("Ver respuesta RAW de DeepSeek-R1-0528 (para depuración)").code(full_analysis_text)
+        # --- Depuración (Mantener activo por si falla de nuevo) ---
+        st.expander(f"Ver respuesta RAW de {HF_MODEL_NAME} (para depuración)").code(full_analysis_text)
 
+        # --- PARSING Y PRESENTACIÓN (No cambia, el formato de salida se lo pedimos a la IA) ---
         st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
 
@@ -171,7 +180,7 @@ def analizar_script(script_texto):
         return ""
 
     except Exception as e:
-        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script con DeepSeek-R1-0528: {e}. Por favor, revisa tu código.")
-        st.markdown("**Análisis de DeepSeek-R1-0528 (Texto Crudo - Fallback por error en la app):**")
-        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de DeepSeek-R1-0528 debido a un error interno.")
+        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script con {HF_MODEL_NAME}: {e}. Por favor, revisa tu código.")
+        st.markdown(f"**Análisis de {HF_MODEL_NAME} (Texto Crudo - Fallback por error en la app):**")
+        st.code(full_analysis_text if full_analysis_text else f"No se pudo obtener el análisis de {HF_MODEL_NAME} debido a un error interno.")
         return f"Error al analizar script: {e}"
