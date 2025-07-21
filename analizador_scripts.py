@@ -19,9 +19,9 @@ else:
 model = None
 if genai:
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
     except Exception as e:
-        st.error(f"Error al inicializar el modelo Gemini 'gemini-1.5-flash' en analizador_scripts: {e}")
+        st.error(f"Error al inicializar el modelo Gemini 'gemini-2.5-flash' en analizador_scripts: {e}")
         model = None
 
 def analizar_script(script_texto):
