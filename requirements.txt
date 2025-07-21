@@ -1,6 +1,4 @@
 streamlit
 google-generativeai
-openai
-python-dotenv
-dashscope
 huggingface_hub
+python-dotenv
