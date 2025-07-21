@@ -148,7 +148,8 @@ def analizar_script(script_texto):
                 suggestion_text = ""
 
                 # --- Extracción de Puntuación ---
-                score_match = re.search(r'Puntuación:\s*(\d+)%', content_raw, re.IGNORECASE)
+                # Usamos [\s\n]* para permitir cualquier número de espacios o saltos de línea
+                score_match = re.search(r'Puntuación:[\s\n]*(\d+)%', content_raw, re.IGNORECASE)
                 if score_match:
                     score = int(score_match.group(1))
                     # La descripción es lo que está antes de "Puntuación:"
