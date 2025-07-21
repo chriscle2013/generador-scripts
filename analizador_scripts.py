@@ -1,4 +1,5 @@
-from huggingface_hub import InferenceClient, HfHub
+# analizador_scripts.py
+from huggingface_hub import InferenceClient # Removed HfHub
 import os
 import streamlit as st
 import re
@@ -8,8 +9,6 @@ load_dotenv()
 
 # --- Configuración de la API de Hugging Face ---
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
-
-# Mismo nombre de modelo que en generadores.py
 HF_MODEL_NAME = "deepseek-ai/DeepSeek-R1-0528"
 
 client = None
@@ -23,9 +22,6 @@ else:
         client = None
 
 def analizar_script(script_texto):
-    """
-    Realiza un análisis avanzado de un script usando la API de Hugging Face (DeepSeek-R1-0528).
-    """
     if not script_texto.strip():
         return "El script está vacío. No hay nada que analizar con la IA."
 
@@ -34,8 +30,6 @@ def analizar_script(script_texto):
 
     full_analysis_text = ""
 
-    # --- Prompt para DeepSeek-R1-0528 ---
-    # El prompt para el análisis mantiene el formato específico para facilitar el parsing.
     prompt_text = f"""
     Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
     Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
@@ -86,10 +80,9 @@ def analizar_script(script_texto):
 
     st.info("✨ Enviando script a DeepSeek-R1-0528 (Hugging Face) para un análisis *supercargado*...")
     try:
-        # --- Llamada a la API de Hugging Face ---
         response = client.text_generation(
             prompt=prompt_text,
-            max_new_tokens=800, # Ajusta según la longitud del análisis
+            max_new_tokens=800,
             temperature=0.6,
         )
 
@@ -101,10 +94,8 @@ def analizar_script(script_texto):
 
         st.success("✅ ¡Análisis completo generado!")
 
-        # --- Depuración (Mantener activo por si falla de nuevo) ---
         st.expander("Ver respuesta RAW de DeepSeek-R1-0528 (para depuración)").code(full_analysis_text)
 
-        # --- PARSING Y PRESENTACIÓN (No cambia, el formato de salida se lo pedimos a la IA) ---
         st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
 
