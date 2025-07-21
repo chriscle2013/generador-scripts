@@ -2,8 +2,10 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 
+# Cargar variables de entorno (útil para desarrollo local)
 load_dotenv()
 
+# Importar funciones desde tus módulos
 from generadores import generar_script
 from analizador_scripts import analizar_script
 
@@ -25,7 +27,7 @@ duracion = st.slider("⏱️ Duración aproximada (segundos):", 15, 90, 30, step
 
 if st.button("✨ Generar Script"):
     if tema:
-        with st.spinner("Generando tu script con IA Qwen... ¡Esto puede tomar unos segundos! 🤖"): # Mensaje actualizado
+        with st.spinner("Generando tu script con IA de Hugging Face (DeepSeek-R1-0528)... ¡Esto puede tomar unos segundos! 🤖"): # Mensaje actualizado
             script_generado = generar_script(tema, objetivo, estilo, duracion)
             if script_generado:
                 st.subheader("📝 Script Generado:")
@@ -50,7 +52,7 @@ script_completo_para_analizar = st.text_area("✍️ Pega el script completo aqu
 
 if st.button("🔬 Analizar Script"):
     if script_completo_para_analizar:
-        with st.spinner("Analizando tu script con IA Qwen... ¡Casi listo! 🧠"): # Mensaje actualizado
+        with st.spinner("Analizando tu script con IA de Hugging Face (DeepSeek-R1-0528)... ¡Casi listo! 🧠"): # Mensaje actualizado
             analisis_resultado = analizar_script(script_completo_para_analizar)
             if analisis_resultado:
                 st.error(analisis_resultado)
