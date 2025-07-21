@@ -1,4 +1,5 @@
-from huggingface_hub import InferenceClient, HfHub
+# generadores.py
+from huggingface_hub import InferenceClient # Removed HfHub
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -6,12 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- Configuración de la API de Hugging Face ---
-# Asegúrate de que HF_API_TOKEN esté configurada en los secretos de Streamlit Cloud
-# o en tu archivo .env local.
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
-
-# Nombre del modelo Hugging Face a usar.
-# Hemos elegido deepseek-ai/DeepSeek-R1-0528
 HF_MODEL_NAME = "deepseek-ai/DeepSeek-R1-0528"
 
 client = None
@@ -19,24 +15,15 @@ if not HF_API_TOKEN:
     st.error("Error: HF_API_TOKEN no encontrada. No se puede generar el script.")
 else:
     try:
-        # Inicializa el cliente de Inferencias de Hugging Face
         client = InferenceClient(model=HF_MODEL_NAME, token=HF_API_TOKEN)
     except Exception as e:
         st.error(f"Error al inicializar el cliente de Hugging Face en generadores.py: {e}")
         client = None
 
 def generar_script(tema, objetivo, estilo, duracion):
-    """
-    Genera un script para un reel de redes sociales usando la API de Hugging Face (DeepSeek-R1-0528).
-    """
     if client is None:
         return "Cliente de Hugging Face API no inicializado. Revisa tu token API y logs."
 
-    # --- Prompt para DeepSeek-R1-0528 ---
-    # Este modelo es un modelo de chat, por lo que el formato del prompt es importante.
-    # Aunque InferenceClient.text_generation no tiene parámetros 'system', 'user', 'assistant' explícitos,
-    # el modelo puede inferir roles si el prompt está bien estructurado.
-    # Aquí un formato de chat que el modelo DeepSeek puede entender.
     prompt_text = f"""
     Eres un experto creador de contenido para redes sociales (TikTok, Instagram Reels, YouTube Shorts).
     Tu tarea es generar un script detallado y creativo para un reel, basado en la siguiente información:
@@ -76,13 +63,10 @@ def generar_script(tema, objetivo, estilo, duracion):
     """
 
     try:
-        # --- Llamada a la API de Hugging Face para text2text-generation ---
-        # Usa el método `text_generation` para modelos de texto-a-texto
         response = client.text_generation(
             prompt=prompt_text,
-            max_new_tokens=500, # Cantidad máxima de tokens a generar
-            temperature=0.6, # Temperatura recomendada para DeepSeek-R1 para un balance entre creatividad y coherencia
-            # top_p=0.9, # Puedes ajustar parámetros como top_p
+            max_new_tokens=500,
+            temperature=0.6,
         )
 
         if response:
