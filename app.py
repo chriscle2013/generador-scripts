@@ -4,7 +4,7 @@ from analizador_scripts import analizar_script
 
 # --- Configuración de la Página ---
 st.set_page_config(
-    page_title="Generador de Contenido para Reels",
+page_title="Generador de Contenido para Reels",
     page_icon="🎬",
     layout="centered"
 )
