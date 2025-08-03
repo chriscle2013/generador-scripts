@@ -168,3 +168,9 @@ def analizar_script(script_texto):
                 st.markdown("---")
             else:
                 pass
+    
+    except Exception as e:
+        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script con Gemini: {e}. Por favor, revisa tu código.")
+        st.markdown(f"**Análisis de Gemini (Texto Crudo - Fallback por error en la app):**")
+        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de Gemini debido a un error interno.")
+
