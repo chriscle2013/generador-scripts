@@ -2,42 +2,40 @@ import google.generativeai as genai
 import os
 import streamlit as st
 import re
+from dotenv import load_dotenv
 
-# Configuración de la API y el modelo (mantener igual)
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+load_dotenv()
 
-if GOOGLE_API_KEY:
-    try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-    except Exception as e:
-        st.error(f"Error al configurar la API de Gemini en analizador_scripts: {e}")
-        genai = None
+# --- Configuración de la API de Google Gemini ---
+# AHORA BUSCA LA CLAVE CON EL NOMBRE CORRECTO Y CONSISTENTE
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
+GEMINI_MODEL_NAME = "gemini-pro" # o 'gemini-1.5-flash'
+
+client = None
+if not GEMINI_API_KEY:
+    st.error("Error: GEMINI_API_KEY no encontrada en los secretos de Streamlit. Por favor, configúrala.")
 else:
-    st.error("Error: GOOGLE_API_KEY no encontrada en los secretos de Streamlit para el analizador. Por favor, configúrala.")
-    genai = None
-
-model = None
-if genai:
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        genai.configure(api_key=GEMINI_API_KEY)
+        client = genai.GenerativeModel(GEMINI_MODEL_NAME)
     except Exception as e:
-        st.error(f"Error al inicializar el modelo Gemini 'gemini-2.5-flash' en analizador_scripts: {e}")
-        model = None
+        st.error(f"Error al configurar la API de Gemini o inicializar el modelo: {e}")
+        client = None
 
 def analizar_script(script_texto):
     """
-    Realiza un análisis avanzado de un script usando Google Gemini, evaluando tono, hook, CTA, etc.
-    Presenta los resultados de manera más gráfica y con sugerencias específicas.
+    Realiza un análisis avanzado de un script usando la API de Google Gemini.
     """
     if not script_texto.strip():
-        return "El script está vacío. No hay nada que analizar con la IA."
+        st.warning("El script está vacío. No hay nada que analizar.")
+        return
 
-    if model is None:
-        st.error("⚠️ No se puede analizar el script: Modelo de IA no inicializado. Revisa tu clave API y logs.")
-        return "Error: Modelo de IA para análisis no inicializado."
+    if client is None:
+        st.error("Cliente de Gemini API no inicializado. Revisa tu clave API y logs.")
+        return
 
-    # --- PROMPT (Lo mantenemos para que Gemini genere el contenido que queremos) ---
-    prompt = f"""
+    full_analysis_text = ""
+    prompt_text = f"""
     Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
     Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
     Evalúa cada punto de forma crítica pero constructiva, y **siempre proporciona una sugerencia concreta o un ejemplo de cómo mejorar** si detectas una debilidad.
@@ -85,88 +83,68 @@ def analizar_script(script_texto):
     [Conclusión general y potencial. Mensaje motivador final].
     """
 
-    st.info("✨ Enviando script a Gemini para un análisis *supercargado*...")
+    st.info(f"✨ Enviando script a Gemini para un análisis *supercargado*...")
     try:
-        response = model.generate_content(prompt)
-        
-        if not (response.candidates and response.candidates[0].content and response.candidates[0].content.parts):
-            st.warning("😕 Gemini no devolvió un análisis válido. Parece que no hubo contenido o fue bloqueado. Intenta de nuevo.")
-            return "No se pudo generar el análisis del script."
+        response = client.generate_content(prompt_text,
+                                           generation_config={"max_output_tokens": 800, "temperature": 0.7})
+        if response and response.text:
+            full_analysis_text = response.text
+        else:
+            st.warning("😕 Gemini no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
+            return
 
-        full_analysis_text = "".join([part.text for part in response.candidates[0].content.parts])
-        
         st.success("✅ ¡Análisis completo generado!")
 
-        # --- Depuración TEMPORAL (Mantener activo por si falla de nuevo) ---
         st.expander("Ver respuesta RAW de Gemini (para depuración)").code(full_analysis_text)
-        
-        # --- PARSING MÁS ROBUSTO Y PRESENTACIÓN ---
+
+        # --- PARSING Y PRESENTACIÓN ---
         st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
         st.markdown("---")
-        
-        # Patrón para identificar los títulos de sección.
-        # ***MODIFICACIÓN CLAVE AQUÍ: REMOVER LOS ASTERISCOS DEL PATRÓN DE TÍTULO***
-        # Captura el título completo (ej. "1. Tono y Estilo:") y también el texto hasta la siguiente sección.
-        # re.DOTALL permite que '.' coincida con saltos de línea
+
         section_regex = re.compile(
             r"^\s*(?P<title>\d+\.\s*[^:]+):\s*(?P<content>.*?)(?=\s*\d+\.\s*[^:]+:|$)",
             re.MULTILINE | re.DOTALL
         )
-        
+
         parsed_data = {}
-        # Iterar sobre todas las coincidencias encontradas
         for match in section_regex.finditer(full_analysis_text):
-            title = match.group('title').strip() # '1. Tono y Estilo'
+            title = match.group('title').strip()
             content = match.group('content').strip()
             parsed_data[title] = content
 
-        # Definir el orden deseado para las secciones
         ordered_section_titles = [
             "1. Tono y Estilo",
             "2. Gancho (Hook)",
             "3. Desarrollo del Contenido",
-            "4. Llamada a la Acción (CTA)",
+            "4. Llamada a la Acción (CTA - Call To Action)",
             "5. Originalidad y Creatividad",
             "6. Claridad y Concisión",
             "7. Longitud y Ritmo",
             "8. Resumen General y Conclusión Final"
         ]
 
-        # Iterar a través de los títulos en el orden deseado para la presentación
         for full_title_in_order in ordered_section_titles:
-            # Obtener el contenido de la sección. Si no existe, estará vacío.
             content_raw = parsed_data.get(full_title_in_order, "")
-            
-            if content_raw: # Solo si hay contenido para esta sección
-                # Limpiar el título para la presentación
-                # display_title = full_title_in_order.split('.', 1)[1].strip() # Esto ya no es necesario
-                # Directamente, el título sin el número
+
+            if content_raw:
                 display_title = re.sub(r'^\d+\.\s*', '', full_title_in_order).strip()
 
                 score = None
                 description_text = content_raw
                 suggestion_text = ""
-
-                # --- Extracción de Puntuación ---
-                # Usamos [\s\n]* para permitir cualquier número de espacios o saltos de línea
+                
                 score_match = re.search(r'Puntuación:[\s\n]*(\d+)%', content_raw, re.IGNORECASE)
                 if score_match:
                     score = int(score_match.group(1))
-                    # La descripción es lo que está antes de "Puntuación:"
                     description_text = content_raw.split(score_match.group(0))[0].strip()
-                
-                # --- Extracción de Sugerencia ---
-                # Usar re.DOTALL para que '.' coincida con saltos de línea si la sugerencia es multi-línea
+
                 suggestion_match = re.search(r'Sugerencia:\s*(.*)', content_raw, re.DOTALL | re.IGNORECASE)
                 if suggestion_match:
                     suggestion_text = suggestion_match.group(1).strip()
-                    # Si la sugerencia fue encontrada, la quitamos de la descripción
                     description_text = description_text.split('Sugerencia:')[0].strip()
 
-                # --- PRESENTACIÓN EN STREAMLIT ---
-                # Identificamos las secciones que deben mostrar métricas/progreso por su título
                 if display_title in ["Tono y Estilo", "Gancho (Hook)", "Desarrollo del Contenido",
-                                     "Llamada a la Acción (CTA)", "Originalidad y Creatividad",
+                                     "Llamada a la Acción (CTA - Call To Action)", "Originalidad y Creatividad",
                                      "Claridad y Concisión"]:
                     
                     col1, col2 = st.columns([1, 4])
@@ -178,30 +156,21 @@ def analizar_script(script_texto):
                             st.progress(score)
                         if suggestion_text:
                             st.info(f"💡 Sugerencia: {suggestion_text}")
-                
-                # Sección de Longitud y Ritmo (sin puntuación pero con posible sugerencia)
-                elif display_title == "Longitud y Ritmo": 
+
+                elif display_title == "Longitud y Ritmo":
                     st.markdown(f"**{display_title}:** {description_text}")
                     if suggestion_text:
                         st.info(f"💡 Sugerencia: {suggestion_text}")
-                
-                # Sección de Resumen General (normalmente sin puntuación ni sugerencia en formato separado)
+
                 elif display_title == "Resumen General y Conclusión Final":
                     st.markdown(f"### {display_title}")
-                    st.markdown(description_text) 
+                    st.markdown(description_text)
 
-                st.markdown("---") # Separador entre cada sección de análisis
+                st.markdown("---")
             else:
-                # Esto se ejecutará si una sección del 'ordered_section_titles' no fue encontrada en la respuesta de Gemini.
-                # Lo podemos dejar en blanco o añadir un mensaje de depuración si es necesario.
-                # st.warning(f"No se encontró contenido para la sección: {full_title_in_order}")
-                pass # No hacer nada si no se encuentra el contenido de la sección para evitar "ruido"
-
-        return "" # Ya mostramos todo directamente en Streamlit
+                pass
 
     except Exception as e:
-        # Aquí capturamos cualquier error durante el parsing o la presentación
-        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script: {e}. Por favor, revisa tu código.")
-        st.markdown("**Análisis de Gemini (Texto Crudo - Fallback por error en la app):**")
-        st.code(full_analysis_text)
-        return f"Error al analizar script: {e}"
+        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script con Gemini: {e}. Por favor, revisa tu código.")
+        st.markdown(f"**Análisis de Gemini (Texto Crudo - Fallback por error en la app):**")
+        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de Gemini debido a un error interno.")
