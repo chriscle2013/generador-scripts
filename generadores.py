@@ -21,7 +21,7 @@ else:
         st.error(f"Error al configurar la API de Gemini o inicializar el modelo: {e}")
         client = None
 
-def analizar_script(script_texto):
+def generar_script(script_texto):
     """
     Realiza un análisis avanzado de un script usando la API de Google Gemini.
     """
