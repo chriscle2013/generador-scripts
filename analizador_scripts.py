@@ -8,7 +8,6 @@ load_dotenv()
 
 # --- Configuración de la API de Google Gemini ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
-# ¡CAMBIO AQUÍ! Usamos el modelo correcto
 GEMINI_MODEL_NAME = "gemini-2.5-flash" 
 
 client = None
@@ -169,7 +168,7 @@ def analizar_script(script_texto):
                 st.markdown("---")
             else:
                 pass
-
+    
     except Exception as e:
         st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script con Gemini: {e}. Por favor, revisa tu código.")
         st.markdown(f"**Análisis de Gemini (Texto Crudo - Fallback por error en la app):**")
