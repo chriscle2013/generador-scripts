@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- Configuración de la API de Google Gemini ---
-# AHORA BUSCA LA CLAVE CON EL NOMBRE CORRECTO Y CONSISTENTE
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
-GEMINI_MODEL_NAME = "gemini-2.5-flash" # o 'gemini-1.5-flash'
+# ¡CAMBIO AQUÍ! Usamos el modelo correcto
+GEMINI_MODEL_NAME = "gemini-1.5-flash" 
 
 client = None
 if not GEMINI_API_KEY:
