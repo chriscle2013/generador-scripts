@@ -1,6 +1,7 @@
 import streamlit as st
 from generadores import generar_script, generar_copy_hooks
 from analizador_scripts import analizar_script
+from historial_manager import guardar_en_historial, cargar_historial, limpiar_historial
 
 # --- Configuración de la Página ---
 st.set_page_config(
@@ -23,7 +24,7 @@ tema_input = st.text_input(
 st.sidebar.title("Navegación")
 opcion_seleccionada = st.sidebar.radio(
     "Ir a:",
-    ("Generador de Contenido Completo", "Analizador de Scripts")
+    ("Generador de Contenido Completo", "Analizador de Scripts", "Historial de Contenido")
 )
 
 # --- Contenido Principal Basado en la Opción Seleccionada ---
@@ -59,6 +60,12 @@ if opcion_seleccionada == "Generador de Contenido Completo":
 
                 st.subheader("Análisis Rápido del Script:")
                 analizar_script(script) 
+
+                # Botón para guardar el contenido en el historial
+                if st.button("💾 Guardar en Historial"):
+                    guardar_en_historial(tema_input, script, contenido_copy_hooks)
+                    st.success("¡Contenido guardado en el historial con éxito!")
+
         else:
             st.warning("¡Por favor, ingresa un tema antes de generar contenido!")
 
@@ -78,6 +85,31 @@ elif opcion_seleccionada == "Analizador de Scripts":
                 analizar_script(script_input)
         else:
             st.warning("Por favor, pega un script para analizar.")
+
+elif opcion_seleccionada == "Historial de Contenido":
+    st.header("📚 Historial de Contenido Generado")
+    st.write("Aquí puedes revisar y reutilizar el contenido que has guardado.")
+
+    historial = cargar_historial()
+
+    if not historial:
+        st.info("El historial está vacío. Genera y guarda algo de contenido primero.")
+    else:
+        # Botón para limpiar el historial
+        if st.button("🗑️ Limpiar Historial"):
+            limpiar_historial()
+            st.rerun() # Recargar la página para mostrar el historial vacío
+
+        for registro in reversed(historial): # Mostrar los más recientes primero
+            with st.expander(f"**Tema:** {registro['tema']} (Generado: {registro['fecha']})"):
+                st.subheader("Script Generado:")
+                st.markdown(registro['script'])
+                
+                st.subheader("Copy y Hooks Sugeridos:")
+                st.success(f"**Copy:** {registro['copy_hooks']['copy']}")
+                st.markdown("**Hooks:**")
+                for hook in registro['copy_hooks']['hooks']:
+                    st.info(f"- {hook}")
 
 st.markdown("---")
 st.markdown("Desarrollado con ❤️ por tu asistente de Python.")
