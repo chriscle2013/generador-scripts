@@ -10,7 +10,7 @@ load_dotenv()
 # Usamos GEMINI_API_KEY para ser consistentes con la documentación
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
 # El nombre del modelo que estamos usando.
-GEMINI_MODEL_NAME = "gemini-pro" # 'gemini-pro' o 'gemini-1.5-flash'
+GEMINI_MODEL_NAME = "gemini-1.5-flash"
 
 client = None
 if not GEMINI_API_KEY:
@@ -118,7 +118,6 @@ def generar_copy_hooks(tema, script_generado):
             hooks_list = []
             
             # --- Lógica de parsing MEJORADA ---
-            # Usa una expresión regular para encontrar las secciones de forma robusta
             copy_match = re.search(r'Copy:(.*?)(?=Hooks:)', full_text, re.DOTALL | re.IGNORECASE)
             if copy_match:
                 copy_text = copy_match.group(1).strip()
@@ -126,7 +125,6 @@ def generar_copy_hooks(tema, script_generado):
             hooks_match = re.search(r'Hooks:(.*)', full_text, re.DOTALL | re.IGNORECASE)
             if hooks_match:
                 hooks_section = hooks_match.group(1)
-                # Encuentra todas las líneas que comienzan con un guión o un asterisco
                 hooks_list = re.findall(r'^\s*[-*]\s*(.*)', hooks_section, re.MULTILINE)
             
             if not copy_text and not hooks_list and full_text:
