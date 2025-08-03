@@ -15,9 +15,8 @@ st.markdown("Crea scripts, copys y hooks para TikTok, Instagram y YouTube.")
 
 # --- Campo de Texto para el Tema ---
 tema_input = st.text_input(
-    "Ingresa el tema para tu Contenido",
-    placeholder="Ej: Marketing de afiliados para principiantes, Receta de arepas con queso, Últimas noticias de la Fórmula 1",
-    help="Escribe sobre qué quieres generar contenido."
+"Ingresa el tema para tu Contenido", placeholder="Ej: Marketing de afiliados para principiantes, Receta de arepas con queso, Últimas noticias de la Fórmula 1",
+help="Escribe sobre qué quieres generar contenido."
 )
 
 st.sidebar.title("Navegación")
