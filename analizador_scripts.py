@@ -9,7 +9,7 @@ load_dotenv()
 # --- Configuración de la API de Google Gemini ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
 # ¡CAMBIO AQUÍ! Usamos el modelo correcto
-GEMINI_MODEL_NAME = "gemini-1.5-flash" 
+GEMINI_MODEL_NAME = "gemini-2.5-flash" 
 
 client = None
 if not GEMINI_API_KEY:
