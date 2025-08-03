@@ -1,107 +1,134 @@
 import google.generativeai as genai
 import os
 import streamlit as st
+from dotenv import load_dotenv
+import re
 
-# Configura la clave API de Google Gemini
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+load_dotenv()
 
-if GOOGLE_API_KEY:
-    try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        # st.info("API de Gemini configurada correctamente.") # Comentado para evitar el info constante en la UI
-    except Exception as e:
-        st.error(f"Error al configurar la API de Gemini: {e}")
-        genai = None
+# --- Configuración de la API de Google Gemini ---
+# Usamos GEMINI_API_KEY para ser consistentes con la documentación
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
+# El nombre del modelo que estamos usando.
+GEMINI_MODEL_NAME = "gemini-pro" # 'gemini-pro' o 'gemini-1.5-flash'
+
+client = None
+if not GEMINI_API_KEY:
+    st.error("Error: GEMINI_API_KEY no encontrada. Revisa los secretos de Streamlit Cloud o tu archivo .env")
 else:
-    st.error("Error: GOOGLE_API_KEY no encontrada en los secretos de Streamlit. Por favor, configúrala.")
-    genai = None
-
-# Inicializa 'model' a None al principio del script para asegurar que siempre esté definida
-model = None
-if genai:
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash') # Usando 'gemini-2.5-flash'
-        # st.info("Modelo Gemini 'gemini-1.5-flash' cargado exitosamente.") # Comentado para evitar el info constante en la UI
+        genai.configure(api_key=GEMINI_API_KEY)
+        client = genai.GenerativeModel(GEMINI_MODEL_NAME)
     except Exception as e:
-        st.error(f"Error al inicializar el modelo Gemini 'gemini-1.5-flash': {e}")
-        model = None
+        st.error(f"Error al configurar la API de Gemini o inicializar el modelo: {e}")
+        client = None
 
-def generar_script_reel(tema):
-    """Genera un script para un reel basado en el tema proporcionado usando Google Gemini."""
-    if model is None:
-        st.error("No se puede generar script: Modelo de IA no inicializado. Revisa tu clave API y logs.")
-        return ["Error: Modelo de IA no inicializado."]
+def generar_script(tema, objetivo, estilo, duracion):
+    """
+    Genera un script completo para un reel (con título, hook, desarrollo y CTA).
+    """
+    if client is None:
+        return "No se puede generar script: Modelo de IA no inicializado."
 
-    prompt = f"""
-Eres un experto creador de contenido para reels de redes sociales (TikTok, Instagram, YouTube Shorts).
-Genera un script corto para un reel de 30-60 segundos sobre el tema de "{tema}".
-El script debe tener 3 escenas (máximo 2-3 líneas por escena), incluir un hook (gancho) al inicio y una llamada a la acción clara al final.
-Utiliza un lenguaje atractivo y específico para el tema. Debes investigar en internet para que este actualizada la información
+    prompt_text = f"""
+    Eres un experto creador de contenido para redes sociales (TikTok, Instagram Reels, YouTube Shorts).
+    Tu tarea es generar un script detallado y creativo para un reel, basado en la siguiente información:
 
-Formato de salida:
-Hook: [Aquí va el hook]
-Escena 1: [Descripción de la escena 1]
-Escena 2: [Descripción de la escena 2]
-Escena 3: [Descripción de la escena 3 con llamada a la acción]
-"""
-    # st.info(f"Enviando prompt a Gemini para script (tema: {tema}):\n{prompt[:100]}...") # Comentado para evitar el info constante en la UI
+    Tema: {tema}
+    Objetivo: {objetivo}
+    Estilo/Tono: {estilo}
+    Duración aproximada: {duracion} segundos
+
+    El script debe incluir:
+    1.  **Título sugerido para el Reel.**
+    2.  **Gancho (Hook):** Las primeras 3-5 segundos que captarán la atención.
+    3.  **Desarrollo del Contenido:** La narrativa principal, con escenas o puntos clave.
+    4.  **Llamada a la Acción (CTA - Call To Action):** Qué quieres que el espectador haga al final (ej. seguirte, comentar, comprar).
+    5.  **Ideas de Elementos Visuales/Sonido:** Sugerencias para imágenes, texto en pantalla, transiciones, música, etc.
+
+    La respuesta debe ser clara, concisa y fácil de seguir para alguien que va a grabar el reel.
+    Formato de Salida:
+    ---
+    **Título:** [Tu título aquí]
+
+    **Gancho:**
+    [Descripción del gancho]
+
+    **Desarrollo del Contenido:**
+    [Escena 1: Descripción]
+    [Escena 2: Descripción]
+    ...
+    [Escena N: Descripción]
+
+    **Llamada a la Acción:**
+    [Tu CTA aquí]
+
+    **Elementos Visuales/Sonido:**
+    [Lista de ideas visuales/sonido]
+    ---
+    """
     try:
-        response = model.generate_content(prompt)
+        response = client.generate_content(prompt_text,
+                                           generation_config={"max_output_tokens": 500, "temperature": 0.7})
         
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-            st.success("¡Script generado por Gemini con éxito!")
-            return [part.text for part in response.candidates[0].content.parts]
+        if response.text:
+            return response.text
         else:
-            st.warning("Gemini no devolvió un script válido. Posiblemente un error interno de la API o contenido bloqueado.")
-            return ["No se pudo generar un script válido. Intenta de nuevo o ajusta el prompt."]
+            return "No se pudo generar el script. La respuesta de la IA estaba vacía o incompleta."
+
     except Exception as e:
-        st.error(f"Error al conectar con la IA para script: {e}. Revisa tu clave API y límites de uso.")
-        return [f"Error al generar script: {e}"]
+        st.error(f"Ocurrió un error inesperado al generar el script con Gemini: {e}")
+        return f"Error inesperado al generar script: {e}"
 
 def generar_copy_hooks(tema, script_generado):
     """Genera un copy y hooks usando Google Gemini, basado en un script dado y un tema."""
-    if model is None:
+    if client is None:
         st.error("No se puede generar copy/hooks: Modelo de IA no inicializado. Revisa tu clave API y logs.")
         return {"copy": "Error: Modelo de IA no inicializado.", "hooks": []}
 
     script_texto = "\n".join(script_generado)
 
     prompt = f"""
-Eres un experto en marketing digital y creación de copys para redes sociales.
-Genera un copy persuasivo y 3 hooks (ganchos) para una publicación de reel de TikTok/Instagram/YouTube.
-El contenido debe ser sobre el tema de "{tema}" y **basado en el siguiente script**:
+    Eres un experto en marketing digital y creación de copys para redes sociales.
+    Genera un copy persuasivo y 3 hooks (ganchos) para una publicación de reel de TikTok/Instagram/YouTube.
+    El contenido debe ser sobre el tema de "{tema}" y **basado en el siguiente script**:
 
---- SCRIPT ---
-{script_texto}
---- FIN SCRIPT ---
+    --- SCRIPT ---
+    {script_texto}
+    --- FIN SCRIPT ---
 
-El copy debe ser conciso, incluir emojis y hashtags relevantes. Los hooks deben ser preguntas o frases cortas que inciten a ver el reel.
+    El copy debe ser conciso, incluir emojis y hashtags relevantes. Los hooks deben ser preguntas o frases cortas que inciten a ver el reel.
 
-Formato de salida:
-Copy: [Aquí va el copy]
-Hooks:
-- [Hook 1]
-- [Hook 2]
-- [Hook 3]
-"""
-    # st.info(f"Enviando prompt a Gemini para copy/hooks (tema: {tema}, basado en script):\n{prompt[:100]}...") # Comentado para evitar el info constante en la UI
+    Formato de salida:
+    Copy: [Aquí va el copy]
+
+    Hooks:
+    - [Hook 1]
+    - [Hook 2]
+    - [Hook 3]
+    """
     try:
-        response = model.generate_content(prompt)
+        response = client.generate_content(prompt)
         
-        if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+        if response.text:
             st.success("¡Copy y hooks generados por Gemini con éxito!")
-            full_text = "".join([part.text for part in response.candidates[0].content.parts])
+            full_text = response.text
             
-            lines = full_text.split('\n')
             copy_text = ""
             hooks_list = []
             
-            for line in lines:
-                if line.lower().startswith("copy:"):
-                    copy_text = line[len("Copy:"):].strip()
-                elif line.strip().startswith("-"):
-                    hooks_list.append(line[1:].strip())
-                    
+            # --- Lógica de parsing MEJORADA ---
+            # Usa una expresión regular para encontrar las secciones de forma robusta
+            copy_match = re.search(r'Copy:(.*?)(?=Hooks:)', full_text, re.DOTALL | re.IGNORECASE)
+            if copy_match:
+                copy_text = copy_match.group(1).strip()
+
+            hooks_match = re.search(r'Hooks:(.*)', full_text, re.DOTALL | re.IGNORECASE)
+            if hooks_match:
+                hooks_section = hooks_match.group(1)
+                # Encuentra todas las líneas que comienzan con un guión o un asterisco
+                hooks_list = re.findall(r'^\s*[-*]\s*(.*)', hooks_section, re.MULTILINE)
+            
             if not copy_text and not hooks_list and full_text:
                 return {"copy": full_text, "hooks": ["No se pudo parsear, aquí está el texto completo."]}
 
@@ -109,6 +136,7 @@ Hooks:
         else:
             st.warning("Gemini no devolvió copy/hooks válidos. Posiblemente un error interno de la API o contenido bloqueado.")
             return {"copy": "No se pudo generar copy/hooks.", "hooks": []}
+
     except Exception as e:
         st.error(f"Error al generar copy/hooks: {e}. Revisa tu clave API y límites de uso.")
         return {"copy": f"Error al generar copy/hooks: {e}", "hooks": []}
