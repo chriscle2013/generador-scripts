@@ -1,18 +1,18 @@
 import google.generativeai as genai
 import os
 import streamlit as st
-import re
 from dotenv import load_dotenv
+import re
 
 load_dotenv()
 
 # --- Configuración de la API de Google Gemini ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
-GEMINI_MODEL_NAME = "gemini-2.5-flash" 
+GEMINI_MODEL_NAME = "gemini-2.5-flash"
 
 client = None
 if not GEMINI_API_KEY:
-    st.error("Error: GEMINI_API_KEY no encontrada en los secretos de Streamlit. Por favor, configúrala.")
+    st.error("Error: GEMINI_API_KEY no encontrada. Revisa los secretos de Streamlit Cloud o tu archivo .env")
 else:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
@@ -21,156 +21,117 @@ else:
         st.error(f"Error al configurar la API de Gemini o inicializar el modelo: {e}")
         client = None
 
-def generar_script(script_texto):
+def generar_script(tema, objetivo, estilo, duracion):
     """
-    Realiza un análisis avanzado de un script usando la API de Google Gemini.
+    Genera un script completo para un reel (con título, hook, desarrollo y CTA).
     """
-    if not script_texto.strip():
-        st.warning("El script está vacío. No hay nada que analizar.")
-        return
-
     if client is None:
-        st.error("Cliente de Gemini API no inicializado. Revisa tu clave API y logs.")
-        return
+        return "No se puede generar script: Modelo de IA no inicializado."
 
-    full_analysis_text = ""
     prompt_text = f"""
-    Eres un **analista de contenido de primer nivel para reels de redes sociales** (TikTok, Instagram, YouTube Shorts).
-    Tu misión es realizar un análisis **profundo, dinámico y accionable** del siguiente script para un reel.
-    Evalúa cada punto de forma crítica pero constructiva, y **siempre proporciona una sugerencia concreta o un ejemplo de cómo mejorar** si detectas una debilidad.
+    Eres un experto creador de contenido para redes sociales (TikTok, Instagram Reels, YouTube Shorts).
+    Tu tarea es generar un script detallado y creativo para un reel, basado en la siguiente información:
 
-    --- SCRIPT A ANALIZAR ---
+    Tema: {tema}
+    Objetivo: {objetivo}
+    Estilo/Tono: {estilo}
+    Duración aproximada: {duracion} segundos
+
+    El script debe incluir:
+    1.  **Título sugerido para el Reel.**
+    2.  **Gancho (Hook):** Las primeras 3-5 segundos que captarán la atención.
+    3.  **Desarrollo del Contenido:** La narrativa principal, con escenas o puntos clave.
+    4.  **Llamada a la Acción (CTA - Call To Action):** Qué quieres que el espectador haga al final (ej. seguirte, comentar, comprar).
+    5.  **Ideas de Elementos Visuales/Sonido:** Sugerencias para imágenes, texto en pantalla, transiciones, música, etc.
+
+    La respuesta debe ser clara, concisa y fácil de seguir para alguien que va a grabar el reel.
+    Formato de Salida:
+    ---
+    **Título:** [Tu título aquí]
+
+    **Gancho:**
+    [Descripción del gancho]
+
+    **Desarrollo del Contenido:**
+    [Escena 1: Descripción]
+    [Escena 2: Descripción]
+    ...
+    [Escena N: Descripción]
+
+    **Llamada a la Acción:**
+    [Tu CTA aquí]
+
+    **Elementos Visuales/Sonido:**
+    [Lista de ideas visuales/sonido]
+    ---
+    """
+    try:
+        response = client.generate_content(prompt_text,
+                                           generation_config={"max_output_tokens": 500, "temperature": 0.7})
+        
+        if response.text:
+            return response.text
+        else:
+            return "No se pudo generar el script. La respuesta de la IA estaba vacía o incompleta."
+
+    except Exception as e:
+        st.error(f"Ocurrió un error inesperado al generar el script con Gemini: {e}")
+        return f"Error inesperado al generar script: {e}"
+
+def generar_copy_hooks(tema, script_generado):
+    """Genera un copy y hooks usando Google Gemini, basado en un script dado y un tema."""
+    if client is None:
+        st.error("No se puede generar copy/hooks: Modelo de IA no inicializado. Revisa tu clave API y logs.")
+        return {"copy": "Error: Modelo de IA no inicializado.", "hooks": []}
+
+    script_texto = "\n".join(script_generado)
+
+    prompt = f"""
+    Eres un experto en marketing digital y creación de copys para redes sociales.
+    Genera un copy persuasivo y 3 hooks (ganchos) para una publicación de reel de TikTok/Instagram/YouTube.
+    El contenido debe ser sobre el tema de "{tema}" y **basado en el siguiente script**:
+
+    --- SCRIPT ---
     {script_texto}
     --- FIN SCRIPT ---
 
-    El análisis debe cubrir y presentar los siguientes puntos. Para los puntos con puntuación, genera un valor del 0 al 100%.
+    El copy debe ser conciso, incluir emojis y hashtags relevantes. Los hooks deben ser preguntas o frases cortas que inciten a ver el reel.
 
-    **Formato de Salida ABSOLUTAMENTE OBLIGATORIO para el parsing:**
-    Cada punto debe iniciar con su título numerado SIN negritas (ej. "1. Tono y Estilo:").
-    Si hay una puntuación, DEBE incluir la frase exacta "Puntuación: [X%]".
-    Si hay una sugerencia, DEBE incluir la frase exacta "Sugerencia: [Sugerencia concreta o ejemplo]".
+    Formato de salida:
+    Copy: [Aquí va el copy]
 
-    1. Tono y Estilo:
-    [Descripción del tono]. Puntuación: [X%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
-
-    2. Gancho (Hook):
-    [Efectividad del gancho]. Puntuación: [Y%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
-
-    3. Desarrollo del Contenido:
-    [Claridad y progresión del mensaje]. Puntuación: [Z%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
-
-    4. Llamada a la Acción (CTA - Call To Action):
-    [Claridad y persuasión de la CTA]. Puntuación: [W%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
-
-    5. Originalidad y Creatividad:
-    [Nivel de originalidad y frescura]. Puntuación: [A%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
-
-    6. Claridad y Concisión:
-    [Facilidad de comprensión y brevedad]. Puntuación: [B%]
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
-
-    7. Longitud y Ritmo:
-    [Adecuación para reel (30-60s) y flujo general].
-    Sugerencia: [Sugerencia específica de mejora o un ejemplo].
-
-    8. Resumen General y Conclusión Final:
-    [Conclusión general y potencial. Mensaje motivador final].
+    Hooks:
+    - [Hook 1]
+    - [Hook 2]
+    - [Hook 3]
     """
-
-    st.info(f"✨ Enviando script a Gemini para un análisis *supercargado*...")
     try:
-        response = client.generate_content(prompt_text,
-                                           generation_config={"max_output_tokens": 800, "temperature": 0.7})
-        if response and response.text:
-            full_analysis_text = response.text
+        response = client.generate_content(prompt)
+        
+        if response.text:
+            st.success("¡Copy y hooks generados por Gemini con éxito!")
+            full_text = response.text
+            
+            copy_text = ""
+            hooks_list = []
+            
+            copy_match = re.search(r'Copy:(.*?)(?=Hooks:)', full_text, re.DOTALL | re.IGNORECASE)
+            if copy_match:
+                copy_text = copy_match.group(1).strip()
+
+            hooks_match = re.search(r'Hooks:(.*)', full_text, re.DOTALL | re.IGNORECASE)
+            if hooks_match:
+                hooks_section = hooks_match.group(1)
+                hooks_list = re.findall(r'^\s*[-*]\s*(.*)', hooks_section, re.MULTILINE)
+            
+            if not copy_text and not hooks_list and full_text:
+                return {"copy": full_text, "hooks": ["No se pudo parsear, aquí está el texto completo."]}
+
+            return {"copy": copy_text, "hooks": hooks_list}
         else:
-            st.warning("😕 Gemini no devolvió un análisis válido. La respuesta estaba vacía o incompleta.")
-            return
+            st.warning("Gemini no devolvió copy/hooks válidos. Posiblemente un error interno de la API o contenido bloqueado.")
+            return {"copy": "No se pudo generar copy/hooks.", "hooks": []}
 
-        st.success("✅ ¡Análisis completo generado!")
-
-        st.expander("Ver respuesta RAW de Gemini (para depuración)").code(full_analysis_text)
-
-        # --- PARSING Y PRESENTACIÓN ---
-        st.subheader("🚀 Análisis Detallado y Accionable de tu Script")
-        st.markdown("---")
-
-        section_regex = re.compile(
-            r"^\s*(?P<title>\d+\.\s*[^:]+):\s*(?P<content>.*?)(?=\s*\d+\.\s*[^:]+:|$)",
-            re.MULTILINE | re.DOTALL
-        )
-
-        parsed_data = {}
-        for match in section_regex.finditer(full_analysis_text):
-            title = match.group('title').strip()
-            content = match.group('content').strip()
-            parsed_data[title] = content
-
-        ordered_section_titles = [
-            "1. Tono y Estilo",
-            "2. Gancho (Hook)",
-            "3. Desarrollo del Contenido",
-            "4. Llamada a la Acción (CTA - Call To Action)",
-            "5. Originalidad y Creatividad",
-            "6. Claridad y Concisión",
-            "7. Longitud y Ritmo",
-            "8. Resumen General y Conclusión Final"
-        ]
-
-        for full_title_in_order in ordered_section_titles:
-            content_raw = parsed_data.get(full_title_in_order, "")
-
-            if content_raw:
-                display_title = re.sub(r'^\d+\.\s*', '', full_title_in_order).strip()
-
-                score = None
-                description_text = content_raw
-                suggestion_text = ""
-                
-                score_match = re.search(r'Puntuación:[\s\n]*(\d+)%', content_raw, re.IGNORECASE)
-                if score_match:
-                    score = int(score_match.group(1))
-                    description_text = content_raw.split(score_match.group(0))[0].strip()
-
-                suggestion_match = re.search(r'Sugerencia:\s*(.*)', content_raw, re.DOTALL | re.IGNORECASE)
-                if suggestion_match:
-                    suggestion_text = suggestion_match.group(1).strip()
-                    description_text = description_text.split('Sugerencia:')[0].strip()
-
-                if display_title in ["Tono y Estilo", "Gancho (Hook)", "Desarrollo del Contenido",
-                                     "Llamada a la Acción (CTA - Call To Action)", "Originalidad y Creatividad",
-                                     "Claridad y Concisión"]:
-                    
-                    col1, col2 = st.columns([1, 4])
-                    with col1:
-                        st.metric(display_title, f"{score}%" if score is not None else "N/A")
-                    with col2:
-                        st.markdown(f"**{display_title}:** {description_text}")
-                        if score is not None:
-                            st.progress(score)
-                        if suggestion_text:
-                            st.info(f"💡 Sugerencia: {suggestion_text}")
-
-                elif display_title == "Longitud y Ritmo":
-                    st.markdown(f"**{display_title}:** {description_text}")
-                    if suggestion_text:
-                        st.info(f"💡 Sugerencia: {suggestion_text}")
-
-                elif display_title == "Resumen General y Conclusión Final":
-                    st.markdown(f"### {display_title}")
-                    st.markdown(description_text)
-
-                st.markdown("---")
-            else:
-                pass
-    
     except Exception as e:
-        st.error(f"❌ ¡Ups! Ha ocurrido un error inesperado al analizar el script con Gemini: {e}. Por favor, revisa tu código.")
-        st.markdown(f"**Análisis de Gemini (Texto Crudo - Fallback por error en la app):**")
-        st.code(full_analysis_text if full_analysis_text else "No se pudo obtener el análisis de Gemini debido a un error interno.")
-
+        st.error(f"Error al generar copy/hooks: {e}. Revisa tu clave API y límites de uso.")
+        return {"copy": f"Error al generar copy/hooks: {e}", "hooks": []}
