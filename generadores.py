@@ -7,10 +7,8 @@ import re
 load_dotenv()
 
 # --- Configuración de la API de Google Gemini ---
-# Usamos GEMINI_API_KEY para ser consistentes con la documentación
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
-# El nombre del modelo que estamos usando.
-GEMINI_MODEL_NAME = "gemini-1.5-flash"
+GEMINI_MODEL_NAME = "gemini-2.5-flash"
 
 client = None
 if not GEMINI_API_KEY:
@@ -117,7 +115,6 @@ def generar_copy_hooks(tema, script_generado):
             copy_text = ""
             hooks_list = []
             
-            # --- Lógica de parsing MEJORADA ---
             copy_match = re.search(r'Copy:(.*?)(?=Hooks:)', full_text, re.DOTALL | re.IGNORECASE)
             if copy_match:
                 copy_text = copy_match.group(1).strip()
