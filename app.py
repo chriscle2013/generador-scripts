@@ -15,7 +15,7 @@ st.markdown("Crea scripts, copys y hooks para TikTok, Instagram y YouTube.")
 
 # --- Campo de Texto para el Tema ---
 tema_input = st.text_input(
-    "Ingresa el tema para tu Contenido", 
+    "Ingresa el tema para tu Contenido",
     placeholder="Ej: Marketing de afiliados para principiantes, Receta de arepas con queso, Últimas noticias de la Fórmula 1",
     help="Escribe sobre qué quieres generar contenido."
 )
@@ -58,8 +58,7 @@ if opcion_seleccionada == "Generador de Contenido Completo":
                 st.markdown("---")
 
                 st.subheader("Análisis Rápido del Script:")
-                analisis_resultado = analizar_script(script)
-                st.info(analisis_resultado)
+                analizar_script(script) 
         else:
             st.warning("¡Por favor, ingresa un tema antes de generar contenido!")
 
@@ -81,4 +80,4 @@ elif opcion_seleccionada == "Analizador de Scripts":
             st.warning("Por favor, pega un script para analizar.")
 
 st.markdown("---")
-st.markdown("Desarrollado con ❤️ por tu asistente de Python.")
+st.markdown("Desarrollado por Active Medios.")
