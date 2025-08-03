@@ -80,4 +80,4 @@ elif opcion_seleccionada == "Analizador de Scripts":
             st.warning("Por favor, pega un script para analizar.")
 
 st.markdown("---")
-st.markdown("Desarrollado por Active Medios.")
+st.markdown("Desarrollado con ❤️ por tu asistente de Python.")
