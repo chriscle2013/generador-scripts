@@ -36,7 +36,7 @@ def generar_script_reel(tema):
 Eres un experto creador de contenido para reels de redes sociales (TikTok, Instagram, YouTube Shorts).
 Genera un script corto para un reel de 30-60 segundos sobre el tema de "{tema}".
 El script debe tener 3 escenas (máximo 2-3 líneas por escena), incluir un hook (gancho) al inicio y una llamada a la acción clara al final.
-Utiliza un lenguaje atractivo y específico para el tema.
+Utiliza un lenguaje atractivo y específico para el tema. Debes investigar en internet para que este actualizada la información
 
 Formato de salida:
 Hook: [Aquí va el hook]
