@@ -8,7 +8,7 @@ load_dotenv()
 
 # --- Configuración de la API de Google Gemini ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
-GEMINI_MODEL_NAME = "gemini-2.0-flash"
+GEMINI_MODEL_NAME = "gemini-1.5-pro"
 
 client = None
 if not GEMINI_API_KEY:
@@ -79,16 +79,16 @@ def generar_script(tema, objetivo, estilo, duracion):
         return f"Error inesperado al generar script: {e}"
 
 def generar_copy_hooks(tema, script_generado):
-    """Genera un copy y hooks usando Google Gemini, basado en un script dado y un tema."""
+    """Genera un copy, hooks y un título para YouTube Shorts usando Google Gemini."""
     if client is None:
         st.error("No se puede generar copy/hooks: Modelo de IA no inicializado. Revisa tu clave API y logs.")
-        return {"copy": "Error: Modelo de IA no inicializado.", "hooks": []}
+        return {"copy": "Error: Modelo de IA no inicializado.", "hooks": [], "titulo_shorts": ""}
 
     script_texto = "\n".join(script_generado)
 
     prompt = f"""
-    Eres un experto en marketing digital y creación de copys para redes sociales.
-    Genera un copy persuasivo y 3 hooks (ganchos) para una publicación de reel de TikTok/Instagram/YouTube.
+    Eres un experto en marketing digital y creación de contenido para redes sociales.
+    Genera un copy persuasivo, 3 hooks (ganchos) y un título para YouTube Shorts.
     El contenido debe ser sobre el tema de "{tema}" y **basado en el siguiente script**:
 
     --- SCRIPT ---
@@ -96,8 +96,12 @@ def generar_copy_hooks(tema, script_generado):
     --- FIN SCRIPT ---
 
     El copy debe ser conciso, incluir emojis y hashtags relevantes. Los hooks deben ser preguntas o frases cortas que inciten a ver el reel.
-
+    
+    El título para YouTube Shorts debe tener un máximo de 95 caracteres e incluir dos hashtags relevantes al tema y un hashtag viral.
+    
     Formato de salida:
+    Título Shorts: [Título para YouTube Shorts aquí]
+    
     Copy: [Aquí va el copy]
 
     Hooks:
@@ -109,11 +113,16 @@ def generar_copy_hooks(tema, script_generado):
         response = client.generate_content(prompt)
         
         if response.text:
-            st.success("¡Copy y hooks generados por Gemini con éxito!")
+            st.success("¡Contenido complementario generado por Gemini con éxito!")
             full_text = response.text
             
             copy_text = ""
             hooks_list = []
+            titulo_shorts_text = ""
+
+            titulo_shorts_match = re.search(r'Título Shorts:(.*?)(?=Copy:)', full_text, re.DOTALL | re.IGNORECASE)
+            if titulo_shorts_match:
+                titulo_shorts_text = titulo_shorts_match.group(1).strip()
             
             copy_match = re.search(r'Copy:(.*?)(?=Hooks:)', full_text, re.DOTALL | re.IGNORECASE)
             if copy_match:
@@ -124,14 +133,14 @@ def generar_copy_hooks(tema, script_generado):
                 hooks_section = hooks_match.group(1)
                 hooks_list = re.findall(r'^\s*[-*]\s*(.*)', hooks_section, re.MULTILINE)
             
-            if not copy_text and not hooks_list and full_text:
-                return {"copy": full_text, "hooks": ["No se pudo parsear, aquí está el texto completo."]}
+            if not copy_text and not hooks_list and not titulo_shorts_text and full_text:
+                return {"copy": full_text, "hooks": ["No se pudo parsear, aquí está el texto completo."], "titulo_shorts": ""}
 
-            return {"copy": copy_text, "hooks": hooks_list}
+            return {"copy": copy_text, "hooks": hooks_list, "titulo_shorts": titulo_shorts_text}
         else:
-            st.warning("Gemini no devolvió copy/hooks válidos. Posiblemente un error interno de la API o contenido bloqueado.")
-            return {"copy": "No se pudo generar copy/hooks.", "hooks": []}
+            st.warning("Gemini no devolvió un copy/hooks/título válidos. Posiblemente un error interno de la API o contenido bloqueado.")
+            return {"copy": "No se pudo generar copy/hooks/título.", "hooks": [], "titulo_shorts": ""}
 
     except Exception as e:
-        st.error(f"Error al generar copy/hooks: {e}. Revisa tu clave API y límites de uso.")
-        return {"copy": f"Error al generar copy/hooks: {e}", "hooks": []}
+        st.error(f"Error al generar copy/hooks/título: {e}. Revisa tu clave API y límites de uso.")
+        return {"copy": f"Error al generar copy/hooks/título: {e}", "hooks": [], "titulo_shorts": ""}
