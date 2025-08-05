@@ -1,7 +1,7 @@
 import streamlit as st
 from generadores import generar_script, generar_copy_hooks
 from analizador_scripts import analizar_script
-from historial_manager import guardar_en_historial, cargar_historial, limpiar_historial
+from historial_manager import guardar_en_historial, cargar_historial, borrar_registros_seleccionados, limpiar_historial
 
 # --- Configuración de la Página y Estado de la Sesión ---
 st.set_page_config(
@@ -75,7 +75,7 @@ if opcion_seleccionada == "Generador de Contenido Completo":
         st.subheader("Análisis Rápido del Script:")
         analizar_script(st.session_state['script_generado'])
 
-        # Botón para guardar el contenido, ahora con un mensaje de éxito
+        # Botón para guardar el contenido
         if st.button("💾 Guardar en Historial"):
             guardar_en_historial(
                 st.session_state['tema_input'], 
@@ -106,27 +106,50 @@ elif opcion_seleccionada == "Historial de Contenido":
     st.write("Aquí puedes revisar y reutilizar el contenido que has guardado.")
 
     historial = cargar_historial()
+    
+    if historial:
+        st.subheader("Selecciona los registros a borrar:")
+        registros_a_borrar = []
+        
+        # Usamos un formulario para agrupar los botones y checkboxes
+        with st.form("form_eliminar_registros"):
+            for registro in reversed(historial):
+                col1, col2 = st.columns([1, 5])
+                with col1:
+                    if st.checkbox("", key=f"delete_checkbox_{registro['id']}"):
+                        registros_a_borrar.append(registro['id'])
+                with col2:
+                    with st.expander(f"**Tema:** {registro['tema']} (Generado: {registro['fecha']})"):
+                        st.subheader("Script Generado:")
+                        st.markdown(registro['script'])
+                        st.subheader("Copy y Hooks Sugeridos:")
+                        st.success(f"**Copy:** {registro['copy_hooks']['copy']}")
+                        st.markdown("**Hooks:**")
+                        for hook in registro['copy_hooks']['hooks']:
+                            st.info(f"- {hook}")
+            
+            st.markdown("---")
+            
+            # Botones para eliminar dentro del formulario
+            col_b1, col_b2 = st.columns([1, 1])
+            with col_b1:
+                if st.form_submit_button("🗑️ Borrar Seleccionados"):
+                    if registros_a_borrar:
+                        borrar_registros_seleccionados(registros_a_borrar)
+                        st.success(f"Se eliminaron {len(registros_a_borrar)} registro(s) del historial.")
+                        st.rerun()
+                    else:
+                        st.warning("Por favor, selecciona al menos un registro para borrar.")
+            with col_b2:
+                if st.form_submit_button("🗑️ Borrar TODO el Historial"):
+                    limpiar_historial()
+                    st.session_state['script_generado'] = None
+                    st.session_state['copy_hooks_generado'] = None
+                    st.success("¡Historial borrado por completo!")
+                    st.rerun()
 
-    if not historial:
-        st.info("El historial está vacío. Genera y guarda algo de contenido primero.")
     else:
-        # Botón para limpiar el historial
-        if st.button("🗑️ Limpiar Historial"):
-            limpiar_historial()
-            st.session_state['script_generado'] = None
-            st.session_state['copy_hooks_generado'] = None
-            st.rerun()
-
-        for registro in reversed(historial):
-            with st.expander(f"**Tema:** {registro['tema']} (Generado: {registro['fecha']})"):
-                st.subheader("Script Generado:")
-                st.markdown(registro['script'])
-                
-                st.subheader("Copy y Hooks Sugeridos:")
-                st.success(f"**Copy:** {registro['copy_hooks']['copy']}")
-                st.markdown("**Hooks:**")
-                for hook in registro['copy_hooks']['hooks']:
-                    st.info(f"- {hook}")
+        st.info("El historial está vacío. Genera y guarda algo de contenido primero.")
 
 st.markdown("---")
 st.markdown("Desarrollado con ❤️ por tu asistente de Python.")
