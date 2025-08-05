@@ -10,8 +10,11 @@ def guardar_en_historial(tema, script, copy_hooks):
     """
     historial = cargar_historial()
     
+    # Asignar un ID único al nuevo registro
+    nuevo_id = max([r['id'] for r in historial]) + 1 if historial else 1
+    
     nuevo_registro = {
-        "id": len(historial) + 1,
+        "id": nuevo_id,
         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "tema": tema,
         "script": script,
@@ -30,8 +33,26 @@ def cargar_historial():
     """
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []
     return []
+
+def borrar_registros_seleccionados(ids_a_borrar):
+    """
+    Elimina registros específicos del historial basados en sus IDs.
+    """
+    if not ids_a_borrar:
+        return
+        
+    historial = cargar_historial()
+    
+    # Creamos un nuevo historial que no contenga los IDs a borrar
+    nuevo_historial = [registro for registro in historial if registro['id'] not in ids_a_borrar]
+    
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(nuevo_historial, f, ensure_ascii=False, indent=4)
 
 def limpiar_historial():
     """
