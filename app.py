@@ -45,7 +45,6 @@ if opcion_seleccionada == "Generador de Contenido Completo":
     if st.button("Generar Contenido"):
         if st.session_state['tema_input']:
             with st.spinner(f'Generando contenido para "{st.session_state["tema_input"]}"...'):
-                # Generar y guardar en el estado de la sesión
                 st.session_state['script_generado'] = generar_script(
                     st.session_state['tema_input'], "persuasivo", "enérgico", 30
                 )
@@ -55,7 +54,6 @@ if opcion_seleccionada == "Generador de Contenido Completo":
         else:
             st.warning("¡Por favor, ingresa un tema antes de generar contenido!")
 
-    # Mostrar el contenido si ya fue generado (usando el estado de la sesión)
     if st.session_state['script_generado']:
         st.subheader("Script Generado:")
         st.markdown(st.session_state['script_generado']) 
@@ -63,6 +61,11 @@ if opcion_seleccionada == "Generador de Contenido Completo":
         st.markdown("---")
 
         st.subheader("Copy y Hooks Sugeridos para este Script:")
+        
+        # Mostrar el nuevo título para Shorts
+        if st.session_state['copy_hooks_generado']['titulo_shorts']:
+            st.info(f"**Título para Shorts:** {st.session_state['copy_hooks_generado']['titulo_shorts']}")
+        
         st.success(f"**Copy:** {st.session_state['copy_hooks_generado']['copy']}")
         
         st.markdown("**Hooks:**")
@@ -75,7 +78,6 @@ if opcion_seleccionada == "Generador de Contenido Completo":
         st.subheader("Análisis Rápido del Script:")
         analizar_script(st.session_state['script_generado'])
 
-        # Botón para guardar el contenido
         if st.button("💾 Guardar en Historial"):
             guardar_en_historial(
                 st.session_state['tema_input'], 
@@ -111,7 +113,6 @@ elif opcion_seleccionada == "Historial de Contenido":
         st.subheader("Selecciona los registros a borrar:")
         registros_a_borrar = []
         
-        # Usamos un formulario para agrupar los botones y checkboxes
         with st.form("form_eliminar_registros"):
             for registro in reversed(historial):
                 col1, col2 = st.columns([1, 5])
@@ -120,6 +121,10 @@ elif opcion_seleccionada == "Historial de Contenido":
                         registros_a_borrar.append(registro['id'])
                 with col2:
                     with st.expander(f"**Tema:** {registro['tema']} (Generado: {registro['fecha']})"):
+                        # Mostrar el nuevo título para Shorts en el historial
+                        if 'titulo_shorts' in registro['copy_hooks']:
+                            st.info(f"**Título para Shorts:** {registro['copy_hooks']['titulo_shorts']}")
+                        
                         st.subheader("Script Generado:")
                         st.markdown(registro['script'])
                         st.subheader("Copy y Hooks Sugeridos:")
@@ -130,7 +135,6 @@ elif opcion_seleccionada == "Historial de Contenido":
             
             st.markdown("---")
             
-            # Botones para eliminar dentro del formulario
             col_b1, col_b2 = st.columns([1, 1])
             with col_b1:
                 if st.form_submit_button("🗑️ Borrar Seleccionados"):
